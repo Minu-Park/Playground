@@ -3,7 +3,7 @@
 #include <memory>
 #include <QString>
 #include <mutex>
-#include "ProcessingPipeline.h"
+#include "Pipeline/ProcessingPipeline.h"
 
 class DynamicLibraryNode : public ProcessingNode {
 public:

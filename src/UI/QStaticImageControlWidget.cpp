@@ -1,5 +1,5 @@
-#include "QStaticImageControlWidget.h"
-#include "StaticImageImagingController.h"
+#include "UI/QStaticImageControlWidget.h"
+#include "Controller/StaticImageImagingController.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QListWidget>

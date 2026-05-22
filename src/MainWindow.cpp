@@ -2,7 +2,7 @@
 #include "DeviceWindow.h"
 #include "CameraSystem.h"
 #include "Gocator.h"
-#include "LogManager.h"
+#include "Utility/LogManager.h"
 #include <QAction>
 #include <QMenu>
 #include <QMenuBar>

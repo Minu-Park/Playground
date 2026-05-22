@@ -1,6 +1,6 @@
 #include "MainWindow.h"
 #include "Resources.h"
-#include "LogManager.h"
+#include "Utility/LogManager.h"
 #include <QApplication>
 #include <QFont>
 

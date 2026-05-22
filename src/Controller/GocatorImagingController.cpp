@@ -1,6 +1,6 @@
-#include "GocatorImagingController.h"
-#include "GraphicsEngineSink.h"
-#include "ProcessingFrame.h"
+#include "Controller/GocatorImagingController.h"
+#include "Controller/GraphicsEngineSink.h"
+#include "Pipeline/ProcessingFrame.h"
 #include "engine/GraphicsEngine.h"
 #include "GocatorDataSetScene3DAdapter.h"
 #include <QPointer>

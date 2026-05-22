@@ -1,6 +1,6 @@
 #pragma once
 #include <QObject>
-#include "ProcessingPipeline.h"
+#include "Pipeline/ProcessingPipeline.h"
 
 class GraphicsEngineSink;
 

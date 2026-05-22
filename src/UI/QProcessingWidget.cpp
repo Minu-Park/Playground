@@ -1,8 +1,8 @@
-#include "QProcessingWidget.h"
-#include "AbstractImagingController.h"
-#include "ProcessingRegistry.h"
-#include "DynamicLibraryLoader.h"
-#include "ProcessingPipeline.h"
+#include "UI/QProcessingWidget.h"
+#include "Controller/AbstractImagingController.h"
+#include "Pipeline/ProcessingRegistry.h"
+#include "Pipeline/DynamicLibraryLoader.h"
+#include "Pipeline/ProcessingPipeline.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>

@@ -1,4 +1,4 @@
-#include "ProcessingRegistry.h"
+#include "Pipeline/ProcessingRegistry.h"
 #include <QImage>
 
 namespace {

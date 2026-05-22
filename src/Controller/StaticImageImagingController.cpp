@@ -1,5 +1,5 @@
-#include "StaticImageImagingController.h"
-#include "GraphicsEngineSink.h"
+#include "Controller/StaticImageImagingController.h"
+#include "Controller/GraphicsEngineSink.h"
 #include <QImage>
 #include <QDebug>
 

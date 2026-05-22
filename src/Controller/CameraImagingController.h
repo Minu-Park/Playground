@@ -1,5 +1,5 @@
 #pragma once
-#include "AbstractImagingController.h"
+#include "Controller/AbstractImagingController.h"
 #include "Camera.h"
 #include <atomic>
 #include <mutex>

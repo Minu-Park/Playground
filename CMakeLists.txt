@@ -45,26 +45,25 @@ qt_add_executable(Playground
     src/main.cpp
     src/MainWindow.cpp
     src/DeviceWindow.cpp
-    src/QProcessingWidget.cpp
-    src/LogManager.cpp
-    src/AbstractImagingController.h
-    src/GraphicsEngineSink.h
-    src/GraphicsEngineSink.cpp
-    src/CameraImagingController.h
-    src/CameraImagingController.cpp
-    src/GocatorImagingController.h
-    src/GocatorImagingController.cpp
-    src/StaticImageImagingController.h
-    src/StaticImageImagingController.cpp
-    src/QStaticImageControlWidget.h
-    src/QStaticImageControlWidget.cpp
-    src/ProcessingFrame.h
-    src/ProcessingPipeline.h
-    src/ProcessingPipeline.cpp
-    src/ProcessingRegistry.h
-    src/ProcessingRegistry.cpp
-    src/DynamicLibraryLoader.h
-    src/DynamicLibraryLoader.cpp
+    src/UI/QProcessingWidget.cpp
+    src/UI/QStaticImageControlWidget.cpp
+    src/Utility/LogManager.cpp
+    src/Controller/AbstractImagingController.h
+    src/Controller/GraphicsEngineSink.h
+    src/Controller/GraphicsEngineSink.cpp
+    src/Controller/CameraImagingController.h
+    src/Controller/CameraImagingController.cpp
+    src/Controller/GocatorImagingController.h
+    src/Controller/GocatorImagingController.cpp
+    src/Controller/StaticImageImagingController.h
+    src/Controller/StaticImageImagingController.cpp
+    src/Pipeline/ProcessingFrame.h
+    src/Pipeline/ProcessingPipeline.h
+    src/Pipeline/ProcessingPipeline.cpp
+    src/Pipeline/ProcessingRegistry.h
+    src/Pipeline/ProcessingRegistry.cpp
+    src/Pipeline/DynamicLibraryLoader.h
+    src/Pipeline/DynamicLibraryLoader.cpp
 )
 
 
@@ -79,6 +78,8 @@ target_link_libraries(Playground
         Qt6::Xml
         Qt6::Concurrent
 )
+
+target_include_directories(Playground PRIVATE src)
 
 set_target_properties(Playground PROPERTIES
     BUILD_RPATH "${PLAYGROUND_MODULES_DIR}/Gocator/GoPxL-SDK/lib"

@@ -5,7 +5,7 @@
 #include <memory>
 #include <vector>
 #include <mutex>
-#include "ProcessingPipeline.h"
+#include "Pipeline/ProcessingPipeline.h"
 
 struct NodeDefinition {
     QString id;

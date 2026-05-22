@@ -1,4 +1,4 @@
-#include "ProcessingPipeline.h"
+#include "Pipeline/ProcessingPipeline.h"
 
 void ProcessingPipeline::addNode(std::shared_ptr<ProcessingNode> node) {
     if (!node) return;

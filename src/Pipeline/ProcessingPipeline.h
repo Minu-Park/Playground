@@ -1,5 +1,5 @@
 #pragma once
-#include "ProcessingFrame.h"
+#include "Pipeline/ProcessingFrame.h"
 #include <QString>
 #include <memory>
 #include <vector>

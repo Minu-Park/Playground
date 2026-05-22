@@ -1,4 +1,4 @@
-#include "GraphicsEngineSink.h"
+#include "Controller/GraphicsEngineSink.h"
 #include "engine/GraphicsEngine.h"
 #include <QMetaObject>
 

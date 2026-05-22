@@ -1,4 +1,4 @@
-#include "LogManager.h"
+#include "Utility/LogManager.h"
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QFile>

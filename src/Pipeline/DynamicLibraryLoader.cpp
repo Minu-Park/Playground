@@ -1,4 +1,4 @@
-#include "DynamicLibraryLoader.h"
+#include "Pipeline/DynamicLibraryLoader.h"
 #include <QDebug>
 
 // DynamicLibraryNode implementation

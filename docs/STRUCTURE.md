@@ -14,39 +14,39 @@
 | `modules/Resources` | Resources repo | Shared Qt qrc bundle, icons, app stylesheet, brand selectors |
 | `.gitmodules` | Playground repo | Submodule URL manifest for fresh clone initialization |
 | `CMakeLists.txt` | Playground repo | Host app CMake entry |
-| `src` | Playground repo | Host app source |
+| `src` | Playground repo | Host app source (Structured into `Controller`, `Pipeline`, `UI`, and `Utility` subdirectories) |
 | `docs` | Playground repo | Parent project docs |
 | `AGENTS.md` | Playground repo | Always-read operating rules |
 | `build` | ignored | Parent CMake build directories |
 
 ## Current App
-- `src/main.cpp` initializes shared styles and assets using `Resources::installResources`, registers the global `LogManager`, and launches `MainWindow`.
+- `src/main.cpp` initializes shared styles and assets using `Resources::installResources`, registers the global `LogManager` (located in `src/Utility/LogManager.h`), and launches `MainWindow`.
 - `MainWindow` hosts a `QMdiArea` central widget.
 - The MDI viewport is painted by the host app with neutral gray `#eeeeee` and a centered half-size `:/Resources/BASLER_Logo.png` watermark.
 - Users can dynamically add cameras/sensors as MDI subwindows (`DeviceWindow`).
 - Each `DeviceWindow` pairs visualization and control:
   - Central Widget: `GraphicsEngine` for primary visual focus.
-  - Right Dock: `QCameraWidget`, `QGocatorWidget`, or `QStaticImageControlWidget` for device settings or test image playback control.
-  - Bottom Dock: `QProcessingWidget` for runtime C++ OpenCV code editing and compilation (Note: OpenCV features are currently disabled).
+  - Right Dock: `QCameraWidget`, `QGocatorWidget`, or `QStaticImageControlWidget` (defined in `src/UI/QStaticImageControlWidget.h`) for device settings or test image playback control.
+  - Bottom Dock: `QProcessingWidget` (defined in `src/UI/QProcessingWidget.h`) for runtime C++ OpenCV code editing and compilation (Note: OpenCV features are currently disabled).
 - 2D camera grabs are routed through the runtime OpenCV compiled filter (if active and enabled) and displayed in the central `GraphicsEngine` via `setImage`.
 - 3D data from Gocator or Blaze is adapter-converted and set via `setScene3D` on the local `GraphicsEngine`.
 - Device callbacks originate outside the GUI thread. UI updates are queued onto the local `GraphicsEngine` instance.
-- **Test Image Simulation**: Users can start a static image session using files from disk. `StaticImageImagingController` feeds these images sequentially to the pipeline, while `QStaticImageControlWidget` manages the image list, playback, and speed.
+- **Test Image Simulation**: Users can start a static image session using files from disk. `StaticImageImagingController` (defined in `src/Controller/StaticImageImagingController.h`) feeds these images sequentially to the pipeline, while `QStaticImageControlWidget` manages the image list, playback, and speed.
 - `Camera` owns camera lifecycle and grabbing. The host app compiles `BlazeScene3DAdapter` for the current Camera + blaze integration path.
 - `Gocator` owns discovery/connect/parameter/grabbing. The host app compiles `GocatorDataSetScene3DAdapter` for the current Gocator + GoPxL integration path.
 - `MainWindow` explicitly deletes MDI subwindows before `CameraSystem` destruction so `DeviceWindow` can deregister callbacks and remove cameras while the owning system is still alive.
 - **Global Logging**: A global thread-safe logger (`LogManager`) intercepts Qt logs and redirects module `std::cout`/`std::cerr` logs, writing them to a rolling log file `lastlog.log` (capped at 500 lines) and mirroring them to the "System Logs" `QDockWidget` at the bottom of the `MainWindow` via `Qt::QueuedConnection`.
 - `CameraSystem::syslog()` emits `[Camera System]` stream logs, and `Gocator::syslog()` emits `[Gocator]` stream logs for discovery, connection, configuration, grabbing, stopping, and warning events.
 
-## Planned Imaging Controller Direction
+## Imaging Controller Architecture
 - `docs/IMAGING_CONTROLLER_PLAN.md` is the source of truth for the staged Camera imaging lifecycle refactor.
 - The current Camera `ready()` permit flow is the baseline live-acquisition policy.
-- Future Camera processing should move toward:
-  - `CameraImagingController` for lifecycle, callback ownership, pipeline execution, and `ready()` timing.
-  - `ProcessingPipeline` for ordered OpenCV/PCL processing nodes.
-  - `ProcessingRegistry` for built-in and dynamic-library-provided processing definitions.
-  - `GraphicsEngineSink` for GUI-thread display enqueue.
-- `DeviceWindow` should shrink toward widget hosting: `GraphicsEngine`, device controls, and processing UI.
+- The Camera processing architecture consists of:
+  - `CameraImagingController` (in `src/Controller/`) for lifecycle, callback ownership, pipeline execution, and `ready()` timing.
+  - `ProcessingPipeline` (in `src/Pipeline/`) for ordered OpenCV/PCL processing nodes.
+  - `ProcessingRegistry` (in `src/Pipeline/`) for built-in and dynamic-library-provided processing definitions.
+  - `GraphicsEngineSink` (in `src/Controller/`) for GUI-thread display enqueue.
+- `DeviceWindow` hosts visual and control widgets: `GraphicsEngine`, device controls, and processing UI.
 - Gocator controller work is deferred; current Gocator wiring remains unchanged until its acquisition admission policy is defined.
 
 ## Boundaries
