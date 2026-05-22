@@ -27,6 +27,10 @@ add_subdirectory("${PLAYGROUND_MODULES_DIR}/Resources" "${CMAKE_BINARY_DIR}/modu
 
 qt_add_executable(Playground
     src/main.cpp
+    src/MainWindow.cpp
+    src/DeviceWindow.cpp
+    src/QProcessingWidget.cpp
+    src/LogManager.cpp
 )
 
 
@@ -45,3 +49,21 @@ target_link_libraries(Playground
 set_target_properties(Playground PROPERTIES
     BUILD_RPATH "${PLAYGROUND_MODULES_DIR}/Gocator/GoPxL-SDK/lib"
 )
+
+# find_package(OpenCV QUIET)
+# if(OpenCV_FOUND)
+#     message(STATUS "[Playground] OpenCV found. Enabling live image processing pipeline.")
+#     target_compile_definitions(Playground PRIVATE HAS_OPENCV)
+#
+#     get_filename_component(OPENCV_LIB_DIR "${OpenCV_DIR}/../.." ABSOLUTE)
+#
+#     target_compile_definitions(Playground PRIVATE
+#         OPENCV_INCLUDE_DIR="${OpenCV_INCLUDE_DIRS}"
+#         OPENCV_LIB_DIR="${OPENCV_LIB_DIR}"
+#     )
+#
+#     target_include_directories(Playground PRIVATE ${OpenCV_INCLUDE_DIRS})
+#     target_link_libraries(Playground PRIVATE ${OpenCV_LIBRARIES})
+# else()
+#     message(WARNING "[Playground] OpenCV NOT found. Live image processing pipeline will be disabled.")
+# endif()

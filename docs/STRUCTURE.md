@@ -19,17 +19,19 @@
 | `build` | ignored | Parent CMake build directories |
 
 ## Current App
-- `src/main.cpp` creates one `QMainWindow`.
-- `src/main.cpp` initializes shared styles and assets using `Resources::installResources`.
-- `GraphicsEngine` is the central widget.
-- `Camera` is controlled through `QCameraWidget` inside a right-side `QDockWidget`.
-- `Gocator` is controlled through `QGocatorWidget` inside a right-side `QDockWidget`.
-- 2D camera grabs convert `CPylonImage` to `QImage`, then call `GraphicsEngine::setImage`.
-- 3D camera grabs convert `CPylonDataContainer` through `BlazeScene3DAdapter`, then call `GraphicsEngine::setScene3D`.
-- Gocator grabs convert `GoPxLSdk::GoDataSet` through `GocatorDataSetScene3DAdapter`, then call `GraphicsEngine::setScene3D`.
-- Device callbacks originate outside the GUI thread. UI updates are queued onto `GraphicsEngine`.
+- `src/main.cpp` initializes shared styles and assets using `Resources::installResources`, registers the global `LogManager`, and launches `MainWindow`.
+- `MainWindow` hosts a `QMdiArea` central widget.
+- Users can dynamically add cameras/sensors as MDI subwindows (`DeviceWindow`).
+- Each `DeviceWindow` pairs visualization and control:
+  - Central Widget: `GraphicsEngine` for primary visual focus.
+  - Right Dock: `QCameraWidget` or `QGocatorWidget` for device settings.
+  - Bottom Dock: `QProcessingWidget` for runtime C++ OpenCV code editing and compilation (Note: OpenCV features are currently disabled).
+- 2D camera grabs are routed through the runtime OpenCV compiled filter (if active and enabled) and displayed in the central `GraphicsEngine` via `setImage`.
+- 3D data from Gocator or Blaze is adapter-converted and set via `setScene3D` on the local `GraphicsEngine`.
+- Device callbacks originate outside the GUI thread. UI updates are queued onto the local `GraphicsEngine` instance.
 - `Camera` owns camera lifecycle and grabbing. The host app compiles `BlazeScene3DAdapter` for the current Camera + blaze integration path.
 - `Gocator` owns discovery/connect/parameter/grabbing. The host app compiles `GocatorDataSetScene3DAdapter` for the current Gocator + GoPxL integration path.
+- **Global Logging**: A global thread-safe logger (`LogManager`) intercepts Qt logs, writing them to a rolling log file `lastlog.log` (capped at 500 lines) and mirroring them to the "System Logs" `QDockWidget` at the bottom of the `MainWindow` via `Qt::QueuedConnection`.
 
 ## Boundaries
 - Parent app may link module targets and call public module APIs.
