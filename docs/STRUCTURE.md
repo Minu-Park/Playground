@@ -37,6 +37,17 @@
 - **Global Logging**: A global thread-safe logger (`LogManager`) intercepts Qt logs and redirects module `std::cout`/`std::cerr` logs, writing them to a rolling log file `lastlog.log` (capped at 500 lines) and mirroring them to the "System Logs" `QDockWidget` at the bottom of the `MainWindow` via `Qt::QueuedConnection`.
 - `CameraSystem::syslog()` emits `[Camera System]` stream logs, and `Gocator::syslog()` emits `[Gocator]` stream logs for discovery, connection, configuration, grabbing, stopping, and warning events.
 
+## Planned Imaging Controller Direction
+- `docs/IMAGING_CONTROLLER_PLAN.md` is the source of truth for the staged Camera imaging lifecycle refactor.
+- The current Camera `ready()` permit flow is the baseline live-acquisition policy.
+- Future Camera processing should move toward:
+  - `CameraImagingController` for lifecycle, callback ownership, pipeline execution, and `ready()` timing.
+  - `ProcessingPipeline` for ordered OpenCV/PCL processing nodes.
+  - `ProcessingRegistry` for built-in and dynamic-library-provided processing definitions.
+  - `GraphicsEngineSink` for GUI-thread display enqueue.
+- `DeviceWindow` should shrink toward widget hosting: `GraphicsEngine`, device controls, and processing UI.
+- Gocator controller work is deferred; current Gocator wiring remains unchanged until its acquisition admission policy is defined.
+
 ## Boundaries
 - Parent app may link module targets and call public module APIs.
 - Parent app must not copy module implementation files.
@@ -47,4 +58,5 @@
 - Sensor SDK adapters that expose SDK payload types are compiled by host apps that use those SDK modules.
 - pylon is required for the current Camera + blaze integration path.
 - GoPxL SDK is required for the current Gocator integration path.
+- Processing pipeline changes must not bypass the Camera `ready()` flow-control contract.
 - If module source changes are needed, change that module repo and report its git status separately.

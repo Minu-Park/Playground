@@ -44,3 +44,4 @@ cmake --build build/cmake-build-debug --target Playground -j 8
 - `src/DeviceWindow.cpp`: device-specific control dock and GraphicsEngine callback routing
 - `modules/`: 독립 서브모듈 디렉토리 (Camera, Gocator, GraphicsEngine, Resources)
 - `docs/`: 구조 및 개발 가이드 문서
+- `docs/IMAGING_CONTROLLER_PLAN.md`: staged Camera imaging lifecycle and processing pipeline plan

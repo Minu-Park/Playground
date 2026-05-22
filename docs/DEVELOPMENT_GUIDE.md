@@ -33,8 +33,27 @@ git -C modules/Resources diff --check
 
 ## Current Priority
 - Keep Camera/Gocator lifecycle cleanup stable on window close and app quit.
+- Refactor Camera imaging lifecycle in stages, using `docs/IMAGING_CONTROLLER_PLAN.md`.
+- Preserve Camera `ready()` based live-frame admission while moving code.
 - Keep module changes inside each module repo and commit module repos separately from the parent.
 - Validate UI changes with the smallest viable parent configure/build.
+
+## Imaging Controller Work Order
+1. Keep Gocator unchanged unless its acquisition admission policy is explicitly redesigned.
+2. Move Camera callback registration and deregistration into `CameraImagingController`.
+3. Extract GUI-thread display enqueue into `GraphicsEngineSink`.
+4. Add a pass-through `ProcessingPipeline` before adding processing functions.
+5. Add `ProcessingRegistry` before dynamic library loading.
+6. Add dynamic library loading only after registry-owned node definitions exist.
+7. Add pipeline UI after the backend can represent multiple node instances.
+
+## Imaging Controller Rules
+- Do not replace Camera `ready()` with an unbounded queue.
+- Do not change `ready()` timing without a performance decision.
+- Call `ready()` after processing and display enqueue, including processing-error paths.
+- Treat one processing function, multiple functions, and dynamic libraries as the same node-definition/node-instance model.
+- Keep dynamic library extensions behind a cross-platform loader abstraction.
+- Do not unload a dynamic library while active pipeline nodes still reference it.
 
 ## Fresh Clone Troubleshooting
 - If CMake reports that `modules/GraphicsEngine` or `modules/Resources` has no `CMakeLists.txt`, the submodule worktree is not checked out.
