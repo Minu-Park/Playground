@@ -16,6 +16,7 @@
 #include <QPainter>
 #include <QPaintEvent>
 #include <QPixmap>
+#include <QFileDialog>
 
 namespace {
 
@@ -86,6 +87,12 @@ void MainWindow::createMenus() {
     connect(addGocatorAct, &QAction::triggered, this, &MainWindow::onAddLmiGocator);
     deviceMenu->addAction(addGocatorAct);
 
+    deviceMenu->addSeparator();
+
+    auto* addTestImagesAct = new QAction(tr("Add Test Image Session..."), this);
+    connect(addTestImagesAct, &QAction::triggered, this, &MainWindow::onAddTestImageSession);
+    deviceMenu->addAction(addTestImagesAct);
+
     QMenu* windowMenu = menuBar()->addMenu(tr("&Window"));
     auto* tileAct = new QAction(tr("Tile Windows"), this);
     connect(tileAct, &QAction::triggered, _mdiArea, &QMdiArea::tileSubWindows);
@@ -119,6 +126,25 @@ void MainWindow::onAddLmiGocator() {
     auto* devWin = new DeviceWindow(gocator, nullptr);
     devWin->setAttribute(Qt::WA_DeleteOnClose);
     devWin->setWindowTitle(QStringLiteral("LMI Gocator"));
+    _mdiArea->addSubWindow(devWin);
+    devWin->show();
+}
+
+void MainWindow::onAddTestImageSession() {
+    QStringList files = QFileDialog::getOpenFileNames(
+        this,
+        tr("Select Test Images"),
+        QString(),
+        tr("Images (*.png *.jpg *.jpeg *.bmp *.pgm *.tif);;All Files (*)")
+    );
+
+    if (files.isEmpty()) {
+        return;
+    }
+
+    auto* devWin = new DeviceWindow(files, nullptr);
+    devWin->setAttribute(Qt::WA_DeleteOnClose);
+    devWin->setWindowTitle(QStringLiteral("Test Images Session"));
     _mdiArea->addSubWindow(devWin);
     devWin->show();
 }

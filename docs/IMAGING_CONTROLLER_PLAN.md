@@ -35,12 +35,22 @@ DeviceWindow
   hosts the view and control surfaces for one session
   does not own acquisition or processing policy
 
+AbstractImagingController
+  base interface defining lifecycle contract (start, stop, isGrabbing)
+
 CameraImagingController
+  inherits AbstractImagingController
   owns Camera callback registration
   owns Camera lifecycle binding
   owns pipeline execution
   owns GraphicsEngine sink binding
   calls Camera::ready() after processing and display enqueue
+
+GocatorImagingController
+  inherits AbstractImagingController
+  owns Gocator callback registration
+  owns Gocator lifecycle binding
+  owns GraphicsEngine sink binding
 
 ProcessingRegistry
   owns available processing node definitions
@@ -57,13 +67,15 @@ GraphicsEngineSink
 
 ## Boundaries
 - `Camera` owns Basler/pylon acquisition and the `ready()` permit mechanism.
+- `AbstractImagingController` defines the generic device acquisition lifecycle interface.
 - `CameraImagingController` owns Camera-to-pipeline-to-view composition.
+- `GocatorImagingController` owns Gocator-to-view composition.
 - `ProcessingPipeline` owns processing order and node execution.
 - `ProcessingRegistry` owns function/library discovery and node creation.
 - `GraphicsEngine` owns rendering and display mode decisions.
 - `DeviceWindow` owns only widget hosting and layout.
 - `MainWindow` owns only workspace-level creation, logs, and shutdown sequencing.
-- Gocator remains on the current `DeviceWindow` path until a matching backpressure or admission policy is chosen.
+- Both Camera and Gocator are unified under their respective implementations of `AbstractImagingController`.
 
 ## Processing Model
 
@@ -122,25 +134,26 @@ GraphicsEngineSink
 - No code movement.
 - Verification: `git diff --check`.
 
-### Stage 2: CameraImagingController Skeleton
-- Add a parent-owned `CameraImagingController`.
-- Move Camera callback registration and deregistration out of `DeviceWindow`.
+### Stage 2: Camera & Gocator ImagingController Skeleton
+- Define `AbstractImagingController` interface.
+- Add `CameraImagingController` and `GocatorImagingController` inheriting from it.
+- Move Camera and Gocator callback registration and deregistration out of `DeviceWindow`.
 - Keep current behavior exactly:
-  - same `ready()` timing,
-  - same `QMetaObject::invokeMethod` display enqueue,
-  - same Camera 2D and Blaze 3D adapter use.
-- `DeviceWindow` still creates and hosts the controller.
-- Verification: configure/build and open/close Camera windows.
+  - same `ready()` timing for camera,
+  - same display routing.
+- `DeviceWindow` instantiates `std::unique_ptr<AbstractImagingController>` and hosts it.
+- Verification: configure/build and open/close Camera and Gocator windows.
 
 ### Stage 3: GraphicsEngineSink Extraction
-- Move GUI-thread display enqueue into a small sink object.
+- Move GUI-thread display enqueue into a small `GraphicsEngineSink` object.
 - Keep `GraphicsEngine` public API unchanged.
-- Verification: 2D image and Blaze 3D still route through `setImage` and `setScene3D`.
+- Connect both `CameraImagingController` and `GocatorImagingController` to `GraphicsEngineSink` for rendering updates.
+- Verification: 2D image and Blaze/Gocator 3D still route through `setImage` and `setScene3D`.
 
 ### Stage 4: Pass-Through Pipeline
 - Add `ProcessingFrame`, `ProcessingPipeline`, and pass-through node support.
 - Replace direct conversion-to-display with conversion-to-frame, pipeline run, then sink.
-- No dynamic libraries yet.
+- No dynamic libraries yet. Keep OpenCV optional and compile-time guarded.
 - Verification: output must match Stage 3 behavior.
 
 ### Stage 5: ProcessingRegistry
@@ -149,11 +162,11 @@ GraphicsEngineSink
 - Build a pipeline from registered definitions.
 - Verification: pass-through pipeline still builds and runs.
 
-### Stage 6: Dynamic Library Loader
+### Stage 6: Dynamic Library Loader (Safe Hot-Swapping)
 - Add cross-platform loader abstraction.
+- Implement memory-safe, reference-counted library unloading (using `std::shared_ptr` or atomic locks) to prevent background thread segfaults during hot-swaps.
 - Register exported node definitions into `ProcessingRegistry`.
-- Do not enable live hot-swap until unload safety is implemented.
-- Verification: load/unload sample library outside live grab first.
+- Verification: load/unload sample library during active grab thread without crashes.
 
 ### Stage 7: Pipeline UI
 - Replace single-function processing UI assumptions with:
@@ -163,13 +176,16 @@ GraphicsEngineSink
   - compile/load logs.
 - Verification: changing node parameters must not block the grab thread.
 
-### Stage 8: PCL / Scene3D Processing
-- Extend the same registry/pipeline model to `Scene3D`.
-- Keep Camera Blaze and Gocator policies separate until Gocator admission is defined.
+### Stage 8: Offline Test Image Simulation Pipeline (Completed)
+- Implement `StaticImageImagingController` and `QStaticImageControlWidget` to support loading files from disk.
+- Allow developers to test OpenCV C++ hot-swapped nodes offline using multi-image loop playback, prev/next frame navigation, and adjustable FPS.
+- Verification: Create a test image session from the menu, add images, play/pause, adjust FPS, and apply the pipeline without physical camera hardware.
+
+### Stage 9: PCL / Scene3D Processing (Deferred)
+- Extend the same registry/pipeline model to `Scene3D` (Point Cloud / RangeFrame).
 - Verification: no point-cloud or range data loss unless an explicit processing node requests it.
 
 ## Deferred
-- Gocator lifecycle controller.
 - Gocator backpressure or single-in-flight admission.
 - Full-sequence processing mode.
 - Save/replay pipeline.

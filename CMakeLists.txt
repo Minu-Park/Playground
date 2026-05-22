@@ -47,6 +47,24 @@ qt_add_executable(Playground
     src/DeviceWindow.cpp
     src/QProcessingWidget.cpp
     src/LogManager.cpp
+    src/AbstractImagingController.h
+    src/GraphicsEngineSink.h
+    src/GraphicsEngineSink.cpp
+    src/CameraImagingController.h
+    src/CameraImagingController.cpp
+    src/GocatorImagingController.h
+    src/GocatorImagingController.cpp
+    src/StaticImageImagingController.h
+    src/StaticImageImagingController.cpp
+    src/QStaticImageControlWidget.h
+    src/QStaticImageControlWidget.cpp
+    src/ProcessingFrame.h
+    src/ProcessingPipeline.h
+    src/ProcessingPipeline.cpp
+    src/ProcessingRegistry.h
+    src/ProcessingRegistry.cpp
+    src/DynamicLibraryLoader.h
+    src/DynamicLibraryLoader.cpp
 )
 
 
@@ -64,6 +82,10 @@ target_link_libraries(Playground
 
 set_target_properties(Playground PROPERTIES
     BUILD_RPATH "${PLAYGROUND_MODULES_DIR}/Gocator/GoPxL-SDK/lib"
+)
+
+target_compile_definitions(Playground PRIVATE
+    PLAYGROUND_SRC_DIR="${CMAKE_CURRENT_LIST_DIR}/src"
 )
 
 # find_package(OpenCV QUIET)

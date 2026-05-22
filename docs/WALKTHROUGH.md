@@ -136,3 +136,33 @@
 - **Status Jitter Prevention**: Resolved layout shifts during parameter modification messages by setting the message label size policy to `Ignored` (allowing expanding behavior only in layout allocation, without affecting the widget's own sizeHint feedback) and specifying a minimum width for connection and grabbing status bubbles in `Style.qss`.
 - **Unified Status Bubble**: Consolidated separate connection and grabbing status labels into a single `#CameraStatusLabel` / `#GocatorStatusLabel` bubble to simplify the status bar layout, displaying `Disconnected`, `Connected`, and `Live` dynamically.
 - **Softer Bubble Aesthetics**: Updated `Style.qss` to use white backgrounds (`#ffffff`) for all states, using only text colors and thin colored borders for status distinction (`Disconnected` in red, `Connected` in green, `Live` in blue). Removed `min-width` to allow bubbles to resize dynamically based on their text content.
+
+---
+
+# 2D Image Testing Simulation Structure (Add Image) (Added 2026-05-22)
+
+## 1. Key Implementation Features
+- **Offline Simulation Support**:
+  - Implemented `StaticImageImagingController` (inheriting from `AbstractImagingController`) to allow processing offline static images from disk through the `ProcessingPipeline` without camera hardware.
+- **Playback & Navigation Control**:
+  - Added `QStaticImageControlWidget` hosted inside `DeviceWindow`'s control dock when in static image mode.
+  - Supports adding images dynamically during runtime, removing images, manual navigation (Prev/Next), automatic loop playback (Play/Pause), and adjusting playback speed (FPS) via a slider.
+- **MDI Integration & File Dialog**:
+  - Added "Add Test Image Session..." to the main window menu.
+  - Opens a file dialog (`QFileDialog`) to select multiple images, spawning a dedicated `DeviceWindow` linked to the static simulation.
+
+## 2. Modified & Added Files List
+
+| File Path | Status | Key Role |
+| :--- | :--- | :--- |
+| [CMakeLists.txt](file:///Users/minwoo/Documents/Projects/Playground/CMakeLists.txt) | **MODIFY** | Registers static image controller and control widget to build targets. |
+| [StaticImageImagingController.h](file:///Users/minwoo/Documents/Projects/Playground/src/StaticImageImagingController.h) / [.cpp](file:///Users/minwoo/Documents/Projects/Playground/src/StaticImageImagingController.cpp) | **NEW** | Simulation controller that wraps image load and pipelines. |
+| [QStaticImageControlWidget.h](file:///Users/minwoo/Documents/Projects/Playground/src/QStaticImageControlWidget.h) / [.cpp](file:///Users/minwoo/Documents/Projects/Playground/src/QStaticImageControlWidget.cpp) | **NEW** | Control panel UI with play/pause, prev/next, file lists, and FPS slider. |
+| [DeviceWindow.h](file:///Users/minwoo/Documents/Projects/Playground/src/DeviceWindow.h) / [.cpp](file:///Users/minwoo/Documents/Projects/Playground/src/DeviceWindow.cpp) | **MODIFY** | Integrates static image initialization and control widget binding. |
+| [MainWindow.h](file:///Users/minwoo/Documents/Projects/Playground/src/MainWindow.h) / [.cpp](file:///Users/minwoo/Documents/Projects/Playground/src/MainWindow.cpp) | **MODIFY** | Adds menu trigger to load test image sessions. |
+| [STRUCTURE.md](file:///Users/minwoo/Documents/Projects/Playground/docs/STRUCTURE.md) | **MODIFY** | Details architecture and simulation flow changes. |
+
+## 3. Verification Results
+- **CMake & Build**: Successfully configured and compiled target `Playground` with no errors or warnings.
+- **Git diff check**: No trailing whitespace issues found via `git diff --check`.
+

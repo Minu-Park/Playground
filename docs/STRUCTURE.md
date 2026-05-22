@@ -26,11 +26,12 @@
 - Users can dynamically add cameras/sensors as MDI subwindows (`DeviceWindow`).
 - Each `DeviceWindow` pairs visualization and control:
   - Central Widget: `GraphicsEngine` for primary visual focus.
-  - Right Dock: `QCameraWidget` or `QGocatorWidget` for device settings.
+  - Right Dock: `QCameraWidget`, `QGocatorWidget`, or `QStaticImageControlWidget` for device settings or test image playback control.
   - Bottom Dock: `QProcessingWidget` for runtime C++ OpenCV code editing and compilation (Note: OpenCV features are currently disabled).
 - 2D camera grabs are routed through the runtime OpenCV compiled filter (if active and enabled) and displayed in the central `GraphicsEngine` via `setImage`.
 - 3D data from Gocator or Blaze is adapter-converted and set via `setScene3D` on the local `GraphicsEngine`.
 - Device callbacks originate outside the GUI thread. UI updates are queued onto the local `GraphicsEngine` instance.
+- **Test Image Simulation**: Users can start a static image session using files from disk. `StaticImageImagingController` feeds these images sequentially to the pipeline, while `QStaticImageControlWidget` manages the image list, playback, and speed.
 - `Camera` owns camera lifecycle and grabbing. The host app compiles `BlazeScene3DAdapter` for the current Camera + blaze integration path.
 - `Gocator` owns discovery/connect/parameter/grabbing. The host app compiles `GocatorDataSetScene3DAdapter` for the current Gocator + GoPxL integration path.
 - `MainWindow` explicitly deletes MDI subwindows before `CameraSystem` destruction so `DeviceWindow` can deregister callbacks and remove cameras while the owning system is still alive.

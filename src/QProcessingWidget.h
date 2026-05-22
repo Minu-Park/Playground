@@ -1,19 +1,18 @@
 #pragma once
 #include <QWidget>
 #include <QProcess>
-#include <QLibrary>
+#include <memory>
+#include <vector>
 
-#ifdef HAS_OPENCV
-#include <opencv2/opencv.hpp>
-using ProcessFunc = void (*)(const cv::Mat&, cv::Mat&, double, double);
-#else
-using ProcessFunc = void*;
-#endif
-
-class QTextEdit;
+class QListWidget;
 class QPushButton;
 class QSlider;
 class QLabel;
+class QTextEdit;
+class QListWidgetItem;
+class AbstractImagingController;
+class ProcessingNode;
+class DynamicLibraryLoader;
 
 class QProcessingWidget : public QWidget {
     Q_OBJECT
@@ -21,33 +20,55 @@ public:
     explicit QProcessingWidget(QWidget* parent = nullptr);
     ~QProcessingWidget() override;
 
-    double param1() const;
-    double param2() const;
-
-signals:
-    void filterReady(ProcessFunc filter);
-    void parametersChanged(double p1, double p2);
+    void setController(AbstractImagingController* controller);
 
 private slots:
+    void handleAddNode();
+    void handleRemoveNode();
+    void handleMoveUp();
+    void handleMoveDown();
+    void handleNodeItemChanged(QListWidgetItem* item);
+    void handlePipelineSelectionChanged();
+    void handleSliderValueChanged();
+
+    // Compiler slots
     void handleCompile();
     void handleCompilerFinished(int exitCode, QProcess::ExitStatus exitStatus);
-    void updateLabels();
 
 private:
     void initUI();
-    void loadLibrary();
-    void unloadLibrary();
+    void refreshAvailableNodes();
+    void updatePipelineInController();
+    void loadDynamicNode(const QString& dylibPath);
     QString getScratchDir() const;
 
-    QTextEdit* _codeEditor = nullptr;
-    QPushButton* _compileButton = nullptr;
+    AbstractImagingController* _controller = nullptr;
+
+    // UI components
+    QListWidget* _availableList = nullptr;
+    QListWidget* _pipelineList = nullptr;
+
+    QPushButton* _addButton = nullptr;
+    QPushButton* _removeButton = nullptr;
+    QPushButton* _moveUpButton = nullptr;
+    QPushButton* _moveDownButton = nullptr;
+
     QSlider* _slider1 = nullptr;
     QSlider* _slider2 = nullptr;
     QLabel* _slider1Label = nullptr;
     QLabel* _slider2Label = nullptr;
+    QLabel* _selectedNodeLabel = nullptr;
+
+    // Dynamic compiler UI (OpenCV optional)
+    QTextEdit* _codeEditor = nullptr;
+    QPushButton* _compileButton = nullptr;
     QTextEdit* _logConsole = nullptr;
 
     QProcess* _compiler = nullptr;
-    QLibrary* _library = nullptr;
-    ProcessFunc _filterFunc = nullptr;
+
+    // Active nodes currently in the pipeline (managed by UI)
+    std::vector<std::shared_ptr<ProcessingNode>> _activeNodes;
+
+    // Loaded dynamic library loader (kept alive so library memory isn't unmapped prematurely)
+    std::shared_ptr<DynamicLibraryLoader> _dynamicLoader;
 };

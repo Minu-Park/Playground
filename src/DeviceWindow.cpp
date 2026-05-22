@@ -2,57 +2,17 @@
 #include "engine/GraphicsEngine.h"
 #include "Utility/Qt/QCameraWidget.h"
 #include "Utility/Qt/QGocatorWidget.h"
-#include "Utility/Qt/QtConverter.h"
-#include "BlazeScene3DAdapter.h"
-#include "GocatorDataSetScene3DAdapter.h"
 #include "CameraSystem.h"
+#include "GraphicsEngineSink.h"
+#include "CameraImagingController.h"
+#include "GocatorImagingController.h"
+#include "QProcessingWidget.h"
+#include "StaticImageImagingController.h"
+#include "QStaticImageControlWidget.h"
 #include <QDockWidget>
 #include <QLabel>
 #include <QPointer>
-#include <QMetaObject>
-
-#ifdef HAS_OPENCV
-#include <opencv2/opencv.hpp>
-
-namespace {
-cv::Mat convertPylonImageToMat(const CPylonImage& pylonImage) {
-    if (!pylonImage.IsValid()) return cv::Mat();
-
-    int width = (int)pylonImage.GetWidth();
-    int height = (int)pylonImage.GetHeight();
-    const void* buffer = pylonImage.GetBuffer();
-    auto pixelType = pylonImage.GetPixelType();
-    
-    if (pixelType == Pylon::PixelType_Mono8) {
-        return cv::Mat(height, width, CV_8UC1, const_cast<void*>(buffer)).clone();
-    } else if (pixelType == Pylon::PixelType_RGB8packed) {
-        cv::Mat rgbMat(height, width, CV_8UC3, const_cast<void*>(buffer));
-        cv::Mat bgrMat;
-        cv::cvtColor(rgbMat, bgrMat, cv::COLOR_RGB2BGR);
-        return bgrMat;
-    } else if (pixelType == Pylon::PixelType_BGR8packed) {
-        return cv::Mat(height, width, CV_8UC3, const_cast<void*>(buffer)).clone();
-    }
-    return cv::Mat();
-}
-
-QImage convertMatToQImage(const cv::Mat& mat) {
-    if (mat.empty()) return QImage();
-    
-    if (mat.type() == CV_8UC1) {
-        QImage image(mat.data, mat.cols, mat.rows, (int)mat.step, QImage::Format_Grayscale8);
-        return image.copy();
-    } else if (mat.type() == CV_8UC3) {
-        QImage image(mat.data, mat.cols, mat.rows, (int)mat.step, QImage::Format_BGR888);
-        return image.copy();
-    } else if (mat.type() == CV_8UC4) {
-        QImage image(mat.data, mat.cols, mat.rows, (int)mat.step, QImage::Format_ARGB32);
-        return image.copy();
-    }
-    return QImage();
-}
-} // namespace
-#endif
+#include <QDebug>
 
 DeviceWindow::DeviceWindow(Camera* camera, CameraSystem* cameraSystem, QWidget* parent)
     : QMainWindow(parent), _camera(camera), _cameraSystem(cameraSystem), _gocator(nullptr) {
@@ -66,22 +26,25 @@ DeviceWindow::DeviceWindow(Gocator* gocator, QWidget* parent)
     initGocator();
 }
 
+DeviceWindow::DeviceWindow(const QStringList& filePaths, QWidget* parent)
+    : QMainWindow(parent), _camera(nullptr), _cameraSystem(nullptr), _gocator(nullptr) {
+    initCommon();
+    initStaticImage(filePaths);
+}
+
 DeviceWindow::~DeviceWindow() {
-    // Perform cleanup for camera
+    if (_camera && _cameraWidget) {
+        _cameraWidget->prepareForShutdown();
+    }
+    if (_gocator && _gocatorWidget) {
+        _gocatorWidget->prepareForShutdown();
+    }
+
+    // Destroy the controller first to safely stop grabbing and deregister callbacks
+    _controller.reset();
+
+    // Now safely delete/remove the devices
     if (_camera) {
-        if (_cameraWidget) {
-            _cameraWidget->prepareForShutdown();
-        }
-        // Stop the grabbing thread and join it first so no callback runs while members are being destroyed
-        _camera->stop();
-
-        if (_grabCallbackId != 0) {
-            _camera->deregisterGrabCallback(_grabCallbackId);
-        }
-        if (_grab3DCallbackId != 0) {
-            _camera->deregisterGrab3DCallback(_grab3DCallbackId);
-        }
-
         if (_cameraSystem) {
             _cameraSystem->removeCamera(_camera);
         } else {
@@ -90,18 +53,8 @@ DeviceWindow::~DeviceWindow() {
         _camera = nullptr;
     }
 
-    // Perform cleanup for gocator
     if (_gocator) {
-        if (_gocatorWidget) {
-            _gocatorWidget->prepareForShutdown();
-        }
-        // Stop grabbing and close connection first
-        _gocator->stop();
         _gocator->close();
-
-        if (_gocatorCallbackId != 0) {
-            _gocator->deregisterGrabCallback(_gocatorCallbackId);
-        }
         delete _gocator;
         _gocator = nullptr;
     }
@@ -112,7 +65,10 @@ void DeviceWindow::initCommon() {
     _graphicsEngine = new GraphicsEngine(this);
     setCentralWidget(_graphicsEngine);
 
-    // 2. Create right dock (Control Panel placeholder)
+    // 2. Create GraphicsEngineSink
+    _sink = new GraphicsEngineSink(_graphicsEngine, this);
+
+    // 3. Create right dock (Control Panel placeholder)
     _controlDock = new QDockWidget(QStringLiteral("Device Control"), this);
     _controlDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     auto* dummyControl = new QLabel(QStringLiteral("Control Panel Placeholder"), _controlDock);
@@ -128,84 +84,17 @@ void DeviceWindow::initCamera() {
     _cameraWidget = new QCameraWidget(_controlDock, _camera);
     _controlDock->setWidget(_cameraWidget);
 
-    // Register real grab callbacks
-    _grabCallbackId = _camera->registerGrabCallback(
-        [this, target = QPointer<GraphicsEngine>(_graphicsEngine), camera = _camera](const CPylonImage& pylonImage, size_t) {
-            if (target.isNull()) {
-                camera->ready();
-                return;
-            }
+    // Create Camera acquisition controller and bind the sink
+    _controller = std::make_unique<CameraImagingController>(_camera, this);
+    _controller->setSink(_sink);
 
-            QImage image;
-#ifdef HAS_OPENCV
-            ProcessFunc filter = nullptr;
-            double p1 = 0.0, p2 = 0.0;
-            {
-                std::lock_guard<std::mutex> lock(_filterMutex);
-                filter = _activeFilter;
-                p1 = _param1;
-                p2 = _param2;
-            }
+    // Create image processing pipeline widget and dock it to the bottom
+    _processingWidget = new QProcessingWidget(this);
+    _processingWidget->setController(_controller.get());
 
-            if (filter) {
-                cv::Mat rawMat = convertPylonImageToMat(pylonImage);
-                if (!rawMat.empty()) {
-                    cv::Mat processedMat;
-                    try {
-                        filter(rawMat, processedMat, p1, p2);
-                        if (!processedMat.empty()) {
-                            image = convertMatToQImage(processedMat);
-                        }
-                    } catch (...) {
-                        // Fail-safe in case dynamic user code has segment faults / logic errors
-                    }
-                }
-            }
-#endif
-
-            if (image.isNull()) {
-                image = convertPylonImageToQImage(pylonImage);
-            }
-
-            if (!image.isNull()) {
-                QMetaObject::invokeMethod(target.data(),
-                                          [target, image = std::move(image)]() mutable {
-                                              if (!target.isNull())
-                                              {
-                                                  target->setImage(image);
-                                              }
-                                          },
-                                          Qt::QueuedConnection);
-            }
-            camera->ready();
-        });
-
-    const BlazeScene3DAdapter scene3DAdapter;
-    _grab3DCallbackId = _camera->registerGrab3DCallback(
-        [target = QPointer<GraphicsEngine>(_graphicsEngine), camera = _camera, scene3DAdapter](
-            const Pylon::CPylonDataContainer& container,
-            size_t) {
-            if (target.isNull())
-            {
-                camera->ready();
-                return;
-            }
-
-            const GraphicsScene3DRequest request = target->scene3DRequest();
-            auto scene = scene3DAdapter.convert(container, request);
-            if (scene.has_value())
-            {
-                QMetaObject::invokeMethod(target.data(),
-                                          [target, scene = std::move(*scene)]() mutable {
-                                              if (!target.isNull())
-                                              {
-                                                  target->setScene3D(std::move(scene));
-                                              }
-                                          },
-                                          Qt::QueuedConnection);
-            }
-            camera->ready();
-        });
+    _processingDock = new QDockWidget(QStringLiteral("Image Processing Pipeline"), this);
+    _processingDock->setWidget(_processingWidget);
+    addDockWidget(Qt::BottomDockWidgetArea, _processingDock);
 }
 
 void DeviceWindow::initGocator() {
@@ -215,28 +104,38 @@ void DeviceWindow::initGocator() {
     _gocatorWidget = new QGocatorWidget(_controlDock, _gocator);
     _controlDock->setWidget(_gocatorWidget);
 
-    const GocatorDataSetScene3DAdapter scene3DAdapter;
-    _gocatorCallbackId = _gocator->registerGrabCallback(
-        [target = QPointer<GraphicsEngine>(_graphicsEngine), gocator = _gocator, scene3DAdapter](
-            const GoPxLSdk::GoDataSet& dataSet,
-            size_t) {
-            if (target.isNull())
-            {
-                return;
-            }
+    // Create Gocator acquisition controller and bind the sink
+    _controller = std::make_unique<GocatorImagingController>(_gocator, this);
+    _controller->setSink(_sink);
 
-            const GraphicsScene3DRequest request = target->scene3DRequest();
-            auto scene = scene3DAdapter.convert(dataSet, request);
-            if (scene.has_value())
-            {
-                QMetaObject::invokeMethod(target.data(),
-                                          [target, scene = std::move(*scene)]() mutable {
-                                              if (!target.isNull())
-                                              {
-                                                  target->setScene3D(std::move(scene));
-                                              }
-                                          },
-                                          Qt::QueuedConnection);
-            }
-        });
+    // Create image processing pipeline widget and dock it to the bottom
+    _processingWidget = new QProcessingWidget(this);
+    _processingWidget->setController(_controller.get());
+
+    _processingDock = new QDockWidget(QStringLiteral("Image Processing Pipeline"), this);
+    _processingDock->setWidget(_processingWidget);
+    addDockWidget(Qt::BottomDockWidgetArea, _processingDock);
+}
+
+void DeviceWindow::initStaticImage(const QStringList& filePaths) {
+    // 1. Create static image controller and bind the sink
+    auto controller = std::make_unique<StaticImageImagingController>(filePaths, this);
+    controller->setSink(_sink);
+
+    // 2. Create static image control widget and host in the control dock
+    _staticImageWidget = new QStaticImageControlWidget(_controlDock);
+    _staticImageWidget->setController(controller.get());
+    _controlDock->setWidget(_staticImageWidget);
+    _controlDock->setWindowTitle(QStringLiteral("Test Image Control"));
+
+    // 3. Keep unique_ptr reference in the window
+    _controller = std::move(controller);
+
+    // 4. Create image processing pipeline widget and dock to the bottom
+    _processingWidget = new QProcessingWidget(this);
+    _processingWidget->setController(_controller.get());
+
+    _processingDock = new QDockWidget(QStringLiteral("Image Processing Pipeline"), this);
+    _processingDock->setWidget(_processingWidget);
+    addDockWidget(Qt::BottomDockWidgetArea, _processingDock);
 }

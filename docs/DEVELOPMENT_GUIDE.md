@@ -33,19 +33,20 @@ git -C modules/Resources diff --check
 
 ## Current Priority
 - Keep Camera/Gocator lifecycle cleanup stable on window close and app quit.
-- Refactor Camera imaging lifecycle in stages, using `docs/IMAGING_CONTROLLER_PLAN.md`.
+- Refactor Camera and Gocator imaging lifecycles in stages, using `docs/IMAGING_CONTROLLER_PLAN.md`.
 - Preserve Camera `ready()` based live-frame admission while moving code.
 - Keep module changes inside each module repo and commit module repos separately from the parent.
 - Validate UI changes with the smallest viable parent configure/build.
 
 ## Imaging Controller Work Order
-1. Keep Gocator unchanged unless its acquisition admission policy is explicitly redesigned.
-2. Move Camera callback registration and deregistration into `CameraImagingController`.
-3. Extract GUI-thread display enqueue into `GraphicsEngineSink`.
-4. Add a pass-through `ProcessingPipeline` before adding processing functions.
-5. Add `ProcessingRegistry` before dynamic library loading.
-6. Add dynamic library loading only after registry-owned node definitions exist.
-7. Add pipeline UI after the backend can represent multiple node instances.
+1. Define `AbstractImagingController` and implement `CameraImagingController` and `GocatorImagingController` skeletons.
+2. Extract GUI-thread display enqueue into `GraphicsEngineSink`.
+3. Add a pass-through `ProcessingPipeline` before adding processing functions. Keep OpenCV optional.
+4. Add `ProcessingRegistry` before dynamic library loading.
+5. Add dynamic library loading with reference-counted unloading safety.
+6. Add pipeline UI after the backend can represent multiple node instances.
+7. Add offline static image simulation pipeline (Add Image) to allow testing hot-swapped nodes without hardware (Completed).
+8. Extend the pipeline to 3D processing (Scene3D / Point Cloud) (Deferred).
 
 ## Imaging Controller Rules
 - Do not replace Camera `ready()` with an unbounded queue.
@@ -53,7 +54,7 @@ git -C modules/Resources diff --check
 - Call `ready()` after processing and display enqueue, including processing-error paths.
 - Treat one processing function, multiple functions, and dynamic libraries as the same node-definition/node-instance model.
 - Keep dynamic library extensions behind a cross-platform loader abstraction.
-- Do not unload a dynamic library while active pipeline nodes still reference it.
+- Guarantee dynamic library code segments are not currently in-flight on grab threads before calling `QLibrary::unload()` (e.g., using reference counting).
 
 ## Fresh Clone Troubleshooting
 - If CMake reports that `modules/GraphicsEngine` or `modules/Resources` has no `CMakeLists.txt`, the submodule worktree is not checked out.
