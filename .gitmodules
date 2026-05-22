@@ -3,7 +3,7 @@
 	url = git@github.com:baslerkr/Camera.git
 [submodule "modules/GraphicsEngine"]
 	path = modules/GraphicsEngine
-	url = git@github.com:minu-park/GraphicsEngine.git
+	url = git@github.com:Minu-Park/GraphicsEngine.git
 [submodule "modules/Gocator"]
 	path = modules/Gocator
 	url = git@github.com:Minu-Park/Gocator.git
