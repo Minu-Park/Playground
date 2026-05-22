@@ -21,7 +21,7 @@ set(PLAYGROUND_MODULES_DIR "${PLAYGROUND_ROOT}/modules")
 
 add_subdirectory("${PLAYGROUND_MODULES_DIR}/GraphicsEngine" "${CMAKE_BINARY_DIR}/modules/GraphicsEngine")
 add_subdirectory("${PLAYGROUND_MODULES_DIR}/Camera/C++" "${CMAKE_BINARY_DIR}/modules/Camera")
-add_subdirectory("${PLAYGROUND_MODULES_DIR}/Gocator" "${CMAKE_BINARY_DIR}/modules/Gocator")
+add_subdirectory("${PLAYGROUND_MODULES_DIR}/Gocator/C++" "${CMAKE_BINARY_DIR}/modules/Gocator")
 add_subdirectory("${PLAYGROUND_MODULES_DIR}/Resources" "${CMAKE_BINARY_DIR}/modules/Resources")
 
 
