@@ -14,10 +14,26 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 6.4 REQUIRED COMPONENTS Widgets OpenGL Xml Concurrent)
-
 set(PLAYGROUND_ROOT "${CMAKE_CURRENT_LIST_DIR}")
 set(PLAYGROUND_MODULES_DIR "${PLAYGROUND_ROOT}/modules")
+
+function(playground_require_module_cmake module_path)
+    set(module_cmake "${PLAYGROUND_MODULES_DIR}/${module_path}/CMakeLists.txt")
+    if(NOT EXISTS "${module_cmake}")
+        message(FATAL_ERROR
+            "Required module '${module_path}' is not checked out at '${module_cmake}'. "
+            "Run 'git submodule sync --recursive' and "
+            "'git submodule update --init --recursive' from the Playground root."
+        )
+    endif()
+endfunction()
+
+playground_require_module_cmake("GraphicsEngine")
+playground_require_module_cmake("Camera/C++")
+playground_require_module_cmake("Gocator/C++")
+playground_require_module_cmake("Resources")
+
+find_package(Qt6 6.4 REQUIRED COMPONENTS Widgets OpenGL Xml Concurrent)
 
 add_subdirectory("${PLAYGROUND_MODULES_DIR}/GraphicsEngine" "${CMAKE_BINARY_DIR}/modules/GraphicsEngine")
 add_subdirectory("${PLAYGROUND_MODULES_DIR}/Camera/C++" "${CMAKE_BINARY_DIR}/modules/Camera")

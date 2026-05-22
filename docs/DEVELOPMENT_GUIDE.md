@@ -7,6 +7,8 @@
 
 ## Commands
 ```bash
+git pull
+git submodule sync --recursive
 git submodule update --init --recursive
 git status --short --branch
 git -C modules/Camera status --short --branch
@@ -33,6 +35,11 @@ git -C modules/Resources diff --check
 - Keep Camera/Gocator lifecycle cleanup stable on window close and app quit.
 - Keep module changes inside each module repo and commit module repos separately from the parent.
 - Validate UI changes with the smallest viable parent configure/build.
+
+## Fresh Clone Troubleshooting
+- If CMake reports that `modules/GraphicsEngine` or `modules/Resources` has no `CMakeLists.txt`, the submodule worktree is not checked out.
+- From the Playground root, run `git pull`, `git submodule sync --recursive`, then `git submodule update --init --recursive`.
+- Remove or reuse the existing `build/` directory only after module checkout is correct.
 
 ## Historical Plan: MDI Layout & OpenCV C++ Dynamic Compilation
 
