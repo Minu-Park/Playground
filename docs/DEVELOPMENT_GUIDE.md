@@ -7,6 +7,7 @@
 
 ## Commands
 ```bash
+git submodule update --init --recursive
 git status --short --branch
 git -C modules/Camera status --short --branch
 git -C modules/GraphicsEngine status --short --branch

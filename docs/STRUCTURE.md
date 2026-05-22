@@ -12,6 +12,7 @@
 | `modules/GraphicsEngine` | GraphicsEngine repo | Reusable Qt/VTK visualization widget library |
 | `modules/Gocator` | Gocator repo | LMI Gocator runtime and UI library |
 | `modules/Resources` | Resources repo | Shared Qt qrc bundle, icons, app stylesheet, brand selectors |
+| `.gitmodules` | Playground repo | Submodule URL manifest for fresh clone initialization |
 | `CMakeLists.txt` | Playground repo | Host app CMake entry |
 | `src` | Playground repo | Host app source |
 | `docs` | Playground repo | Parent project docs |

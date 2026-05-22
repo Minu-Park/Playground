@@ -22,6 +22,12 @@
 
 ## 🚀 빌드 및 실행
 ```bash
+# Clone with modules
+git clone --recurse-submodules git@github.com:minu-park/Playground.git
+
+# Or initialize modules after cloning
+git submodule update --init --recursive
+
 # CMake 프로젝트 구성
 cmake -S . -B build/cmake-build-debug
 

@@ -1,0 +1,12 @@
+[submodule "modules/Camera"]
+	path = modules/Camera
+	url = git@github.com:baslerkr/Camera.git
+[submodule "modules/GraphicsEngine"]
+	path = modules/GraphicsEngine
+	url = git@github.com:minu-park/GraphicsEngine.git
+[submodule "modules/Gocator"]
+	path = modules/Gocator
+	url = git@github.com:Minu-Park/Gocator.git
+[submodule "modules/Resources"]
+	path = modules/Resources
+	url = git@github.com:minu-park/Resources.git
