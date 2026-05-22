@@ -6,7 +6,7 @@
 
 ## 📌 주요 기능
 - **센서 모듈 통합**: `Camera` 및 `Gocator` 센서 모듈의 데이터 취득을 제어하고 통합 UI에 바인딩합니다.
-- **의존성 분리**: 하위 렌더링 엔진(`GraphicsEngine`)과 장치 SDK(Pylon, GoPxL)가 직접 결합되지 않도록 각각의 어댑터를 호스트단에서 병합 컴파일하여 주입합니다.
+- **인터페이스 기반 연동**: 중립 데이터 포맷 및 어댑터를 사용하여 장치 라이브러리와 렌더링 라이브러리 간 결합도를 최소화합니다.
 - **스레드 안전 큐잉**: 워커 스레드에서 수신되는 grab 콜백 데이터를 `QMetaObject::invokeMethod`를 통해 안전하게 GUI 스레드로 전달해 렌더링합니다.
 - **MDI workspace**: `MainWindow` hosts device windows in a branded MDI area with a neutral gray background and centered `BASLER_Logo.png` watermark.
 - **Global logging**: `LogManager` captures Qt logs plus module `std::cout`/`std::cerr` logs into the System Logs dock and `lastlog.log`.
