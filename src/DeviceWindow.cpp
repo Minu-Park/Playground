@@ -72,18 +72,21 @@ DeviceWindow::~DeviceWindow() {
         if (_cameraWidget) {
             _cameraWidget->prepareForShutdown();
         }
+        // Stop the grabbing thread and join it first so no callback runs while members are being destroyed
+        _camera->stop();
+
         if (_grabCallbackId != 0) {
             _camera->deregisterGrabCallback(_grabCallbackId);
         }
         if (_grab3DCallbackId != 0) {
             _camera->deregisterGrab3DCallback(_grab3DCallbackId);
         }
-        _camera->stop();
 
         if (_cameraSystem) {
             _cameraSystem->removeCamera(_camera);
+        } else {
+            delete _camera;
         }
-        delete _camera;
         _camera = nullptr;
     }
 
@@ -92,11 +95,13 @@ DeviceWindow::~DeviceWindow() {
         if (_gocatorWidget) {
             _gocatorWidget->prepareForShutdown();
         }
+        // Stop grabbing and close connection first
+        _gocator->stop();
+        _gocator->close();
+
         if (_gocatorCallbackId != 0) {
             _gocator->deregisterGrabCallback(_gocatorCallbackId);
         }
-        _gocator->stop();
-        _gocator->close();
         delete _gocator;
         _gocator = nullptr;
     }

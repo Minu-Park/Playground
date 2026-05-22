@@ -13,6 +13,40 @@
 #include <QDockWidget>
 #include <QTextEdit>
 #include <QScrollBar>
+#include <QPainter>
+#include <QPaintEvent>
+#include <QPixmap>
+
+namespace {
+
+class BrandedMdiArea final : public QMdiArea {
+public:
+    explicit BrandedMdiArea(QWidget* parent = nullptr)
+        : QMdiArea(parent)
+        , _logo(QStringLiteral(":/Resources/BASLER_Logo.png"))
+    {}
+
+protected:
+    void paintEvent(QPaintEvent* event) override {
+        Q_UNUSED(event);
+
+        QPainter painter(viewport());
+        painter.fillRect(viewport()->rect(), QColor(QStringLiteral("#eeeeee")));
+
+        if (_logo.isNull()) return;
+
+        const QSize logoSize = _logo.size() / 2;
+        const QPoint topLeft(
+            (viewport()->width() - logoSize.width()) / 2,
+            (viewport()->height() - logoSize.height()) / 2);
+        painter.drawPixmap(QRect(topLeft, logoSize), _logo);
+    }
+
+private:
+    QPixmap _logo;
+};
+
+} // namespace
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     setWindowTitle(QStringLiteral("Playground (MDI Workspace)"));
@@ -20,7 +54,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
 
     _cameraSystem = std::make_unique<CameraSystem>();
 
-    _mdiArea = new QMdiArea(this);
+    _mdiArea = new BrandedMdiArea(this);
     _mdiArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     _mdiArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     setCentralWidget(_mdiArea);
@@ -32,7 +66,14 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     connect(LogManager::instance(), &LogManager::logAdded, this, &MainWindow::appendLog, Qt::QueuedConnection);
 }
 
-MainWindow::~MainWindow() {}
+MainWindow::~MainWindow() {
+    if (_mdiArea) {
+        const QList<QMdiSubWindow*> subWindows = _mdiArea->subWindowList();
+        for (QMdiSubWindow* subWindow : subWindows) {
+            delete subWindow;
+        }
+    }
+}
 
 void MainWindow::createMenus() {
     QMenu* deviceMenu = menuBar()->addMenu(tr("&Device"));

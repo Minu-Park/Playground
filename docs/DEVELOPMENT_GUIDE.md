@@ -15,9 +15,25 @@ git -C modules/Resources status --short --branch
 cmake -S . -B build/cmake-build-debug
 cmake --build build/cmake-build-debug --target Playground -j 8
 git diff --check
+git -C modules/Camera diff --check
+git -C modules/Gocator diff --check
+git -C modules/Resources diff --check
 ```
 
-## Current Priority: MDI Layout & OpenCV C++ Dynamic Compilation (Incremental Milestone Plan)
+## Current State
+- The app is an MDI workspace. `MainWindow` owns device creation, global log dock wiring, MDI background painting, and shutdown ordering.
+- `DeviceWindow` owns per-device control dock placement and callback routing into its local `GraphicsEngine`.
+- `CameraSystem` owns Basler `Camera` instances. `MainWindow` must delete MDI subwindows before `CameraSystem` is destroyed.
+- `Gocator` owns discovery, connection, configuration, grabbing, and `[Gocator]` stream logging.
+- `Resources` owns reusable QSS and assets. The host app references `:/Resources/BASLER_Logo.png` for the MDI watermark.
+- OpenCV runtime compilation code exists but is currently disabled in the active app flow.
+
+## Current Priority
+- Keep Camera/Gocator lifecycle cleanup stable on window close and app quit.
+- Keep module changes inside each module repo and commit module repos separately from the parent.
+- Validate UI changes with the smallest viable parent configure/build.
+
+## Historical Plan: MDI Layout & OpenCV C++ Dynamic Compilation
 
 To ensure compile-readiness and prevent context token bloat, the plan is broken down into atomic, testable sub-steps classified by difficulty (Easy, Medium, Hard).
 

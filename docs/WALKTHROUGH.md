@@ -56,7 +56,8 @@
 - **DeviceWindow 내 OpenCV/PCL 하단 독 제거**:
   - `DeviceWindow` 내부에서 OpenCV/PCL 실시간 코드 편집 패널 역할을 하던 하단 독(`_processingDock`)과 `QProcessingWidget`을 제거하여 센서 제어와 시각화 화면의 비중을 높였습니다.
 - **QMdiArea 배경 디자인 개선 (깔맞춤)**:
-  - MDI 영역 바탕화면의 기본 회색 톤을 지우고, 전체 디자인 테마와 자연스러운 대비를 이루는 **세련된 그레이-블루 계열 배경색 (`#f4f6f9`)**을 적용하고 경계선 보더를 제거하여 모던하고 일관된 테마를 갖추었습니다.
+  - MDI 영역 바탕화면을 중립 그레이 `#eeeeee`로 칠하고, 중앙에 `:/Resources/BASLER_Logo.png`를 50% 크기로 그리는 host-side `BrandedMdiArea`를 적용했습니다.
+  - 배경 painting은 `src/MainWindow.cpp`에 남기고, 로고 asset은 `modules/Resources`의 QRC 경로를 참조합니다.
 
 ## 2. 변경 및 신규 추가된 파일 목록
 
@@ -95,3 +96,43 @@
   - `Sans Serif` 및 `Consolas` 폰트 부재로 구동 시 macOS에서 발생하던 폰트 앨리어스 조회 지연 경고(`Populating font family aliases took 51 ms`)를 해결했습니다.
   - `main.cpp`에서 macOS 기본 시스템 폰트(`.AppleSystemUIFont`)를 기본값으로 지정하여 조회 부하를 우회했습니다.
   - `MainWindow.cpp` 스타일시트에 Windows(Consolas), Linux(DejaVu Sans Mono, Liberation Mono), macOS(Menlo, Monaco)의 대표적인 코딩용 고정폭 폰트들을 모두 포함시킨 멀티 플랫폼 폴백 리스트(`'Menlo', 'Monaco', 'Consolas', 'DejaVu Sans Mono', 'Liberation Mono', 'Courier New', monospace`)를 적용해 교차 플랫폼 환경에서 폰트 경고 및 성능 저하 없이 미려하게 표현되도록 개선했습니다.
+
+---
+
+# Camera & Gocator UI Status Display and Parameter Notification (StatusBar Integration) (Added 2026-05-22)
+
+## 1. Key Implementation Features
+- **Operation & Status Feedback**:
+  - Displays a confirmation message on the `QStatusBar` when GenApi parameters are successfully modified or when device discovery / connection operations complete.
+  - Displays error details for 5 seconds on Camera parameter/command failures. Gocator discovery/connection status text uses the normal message style unless a dedicated warning path is added later.
+- **Error Message Visualization**:
+  - Camera error messages use a bold red transient style. Gocator generic messages such as `Connection Failed` and `No devices found` stay in the default message font/color.
+- **Clean and Modern Status Indicators (Bubble Style) - Left Aligned**:
+  - Uses one dynamic status bubble per device widget: `#CameraStatusLabel` / `#GocatorStatusLabel`.
+  - The bubble text switches between `Disconnected`, `Connected`, and `Live`.
+  - Bubble backgrounds stay white; state is communicated by text color (`red`, `green`, `blue`) and a thin neutral border.
+  - **QSS Isolation & Dynamic Property Styling**:
+    - Styling is offloaded to `modules/Resources/Style.qss` using dynamic properties (`status="connected"`, `status="grabbing"`, etc.).
+    - Calls `QStyle::unpolish` and `QStyle::polish` to trigger stylesheet re-evaluation dynamically upon status changes, keeping UI repaint responsive and performant.
+- **Stability and Crash Fixes**:
+  - **Unique Connection Assertion Fix**: Moved the timer timeout connection logic to the constructor instead of multiple connect calls with `Qt::UniqueConnection` inside `showStatusMessage()`, solving the runtime ASSERT failure.
+  - **Destructor Safety**: Ensures device `stop()` and `close()` are called prior to callback deregistration in `~DeviceWindow` to prevent multi-threaded callbacks executing on destroyed objects.
+  - **MDI Shutdown Ordering**: `MainWindow` deletes MDI subwindows before `CameraSystem` destruction so `DeviceWindow` can deregister callbacks and remove cameras while the owning system is still valid.
+
+## 2. Modified Files List
+
+| File Path | Status | Key Role |
+| :--- | :--- | :--- |
+| [QCameraWidget.h](file:///Users/minwoo/Documents/Projects/Playground/modules/Camera/C++/Utility/Qt/QCameraWidget.h) | **MODIFY** | Declares `QLabel` pointers for status indicators and the message timer. |
+| [QCameraWidget.cpp](file:///Users/minwoo/Documents/Projects/Playground/modules/Camera/C++/Utility/Qt/QCameraWidget.cpp) | **MODIFY** | Instantiates status labels, integrates them to the left side of status bar, and implements connection/grab state updating logic with dynamic properties. |
+| [QGocatorWidget.h](file:///Users/minwoo/Documents/Projects/Playground/modules/Gocator/C++/Utility/Qt/QGocatorWidget.h) | **MODIFY** | Declares `QLabel` pointers for status indicators and the message timer for Gocator. |
+| [QGocatorWidget.cpp](file:///Users/minwoo/Documents/Projects/Playground/modules/Gocator/C++/Utility/Qt/QGocatorWidget.cpp) | **MODIFY** | Integrates connection and grab status bubbles to the left side of the status bar, maps `setStatus` text updates to `showStatusMessage`, and implements dynamic property updates. |
+| [Style.qss](file:///Users/minwoo/Documents/Projects/Playground/modules/Resources/Style.qss) | **MODIFY** | Mappings for both `Camera` and `Gocator` status label bubble styles. |
+| [DeviceWindow.cpp](file:///Users/minwoo/Documents/Projects/Playground/src/DeviceWindow.cpp) | **MODIFY** | Improves destructor sequence stability (`stop` prior to callback deregistration) to prevent crash on exit. |
+
+## 3. Verification Results
+- **CMake & Build**: Successfully compiled with `cmake --build build/cmake-build-debug --target Playground`.
+- **Git Formatting**: Passed `git diff --check` with no whitespace warnings.
+- **Status Jitter Prevention**: Resolved layout shifts during parameter modification messages by setting the message label size policy to `Ignored` (allowing expanding behavior only in layout allocation, without affecting the widget's own sizeHint feedback) and specifying a minimum width for connection and grabbing status bubbles in `Style.qss`.
+- **Unified Status Bubble**: Consolidated separate connection and grabbing status labels into a single `#CameraStatusLabel` / `#GocatorStatusLabel` bubble to simplify the status bar layout, displaying `Disconnected`, `Connected`, and `Live` dynamically.
+- **Softer Bubble Aesthetics**: Updated `Style.qss` to use white backgrounds (`#ffffff`) for all states, using only text colors and thin colored borders for status distinction (`Disconnected` in red, `Connected` in green, `Live` in blue). Removed `min-width` to allow bubbles to resize dynamically based on their text content.
