@@ -3,11 +3,13 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QListWidget>
-#include <QPushButton>
-#include <QSlider>
+#include <QToolButton>
+#include <QSpinBox>
 #include <QLabel>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QFrame>
+#include <QStyle>
 #include <QDebug>
 
 QStaticImageControlWidget::QStaticImageControlWidget(QWidget* parent)
@@ -32,10 +34,13 @@ void QStaticImageControlWidget::setController(StaticImageImagingController* cont
         onCurrentIndexChanged(_controller->currentIndex());
         onGrabbingStateChanged(_controller->isGrabbing());
         
-        _fpsSlider->setValue(_controller->fps());
-        _fpsLabel->setText(QStringLiteral("%1 FPS").arg(_controller->fps()));
+        _fpsSpinBox->setValue(_controller->fps());
+        if (_fpsLabel) {
+            _fpsLabel->setText(QStringLiteral("%1 FPS").arg(_controller->fps()));
+        }
         
         setEnabled(true);
+        updateButtonStates();
     } else {
         setEnabled(false);
     }
@@ -43,159 +48,119 @@ void QStaticImageControlWidget::setController(StaticImageImagingController* cont
 
 void QStaticImageControlWidget::initUI() {
     auto* mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(10, 10, 10, 10);
-    mainLayout->setSpacing(8);
+    mainLayout->setContentsMargins(0, 0, 0, 0);
+    mainLayout->setSpacing(0);
 
-    // Style properties
-    QString btnStyle = QStringLiteral(
-        "QPushButton {"
-        "  background-color: #f0f4f8;"
-        "  color: #16202b;"
-        "  border: 1px solid #d9e1ea;"
-        "  border-radius: 4px;"
-        "  padding: 5px 10px;"
-        "  font-size: 12px;"
-        "}"
-        "QPushButton:hover {"
-        "  background-color: #e2eaf4;"
-        "}"
-        "QPushButton:pressed {"
-        "  background-color: #cbd8e9;"
-        "}"
-    );
+    // Create the top control layout (horizontal bar)
+    auto* topControlLayout = new QHBoxLayout();
+    topControlLayout->setContentsMargins(12, 12, 12, 12);
+    topControlLayout->setSpacing(10);
 
-    // List header
-    auto* listHeader = new QLabel(QStringLiteral("Test Images List:"), this);
-    listHeader->setStyleSheet(QStringLiteral("font-weight: bold; font-size: 13px; color: #16202b;"));
-    mainLayout->addWidget(listHeader);
+    // 1. Playback speed controls (FPS SpinBox)
+    auto* fpsLayout = new QHBoxLayout();
+    fpsLayout->setSpacing(6);
+    auto* fpsLabelTitle = new QLabel(QStringLiteral("FPS:"), this);
+    _fpsSpinBox = new QSpinBox(this);
+    _fpsSpinBox->setObjectName(QStringLiteral("StaticImageFpsSpinBox"));
+    _fpsSpinBox->setRange(1, 30);
+    _fpsSpinBox->setValue(5);
+    _fpsSpinBox->setFixedWidth(60);
+    fpsLayout->addWidget(fpsLabelTitle);
+    fpsLayout->addWidget(_fpsSpinBox);
 
-    // File list
+    // VLine separator
+    auto* sep1 = new QFrame(this);
+    sep1->setFrameShape(QFrame::VLine);
+    sep1->setFrameShadow(QFrame::Sunken);
+    sep1->setObjectName(QStringLiteral("StaticImageVLine"));
+
+    // 2. Playback buttons (Prev, Play/Pause, Next)
+    auto* playbackLayout = new QHBoxLayout();
+    playbackLayout->setSpacing(4);
+
+    _prevBtn = new QToolButton(this);
+    _prevBtn->setObjectName(QStringLiteral("StaticImagePrevBtn"));
+    _prevBtn->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    _prevBtn->setIconSize(QSize(16, 16));
+    _prevBtn->setIcon(QIcon(QStringLiteral(":/Resources/Icons/icons8-back-48.png")));
+
+    _playPauseBtn = new QToolButton(this);
+    _playPauseBtn->setObjectName(QStringLiteral("StaticImagePlayPauseBtn"));
+    _playPauseBtn->setCheckable(true);
+    _playPauseBtn->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    _playPauseBtn->setIconSize(QSize(16, 16));
+    {
+        QIcon icon;
+        icon.addFile(QStringLiteral(":/Resources/Icons/icons8-play-48.png"), QSize(), QIcon::Normal, QIcon::Off);
+        icon.addFile(QStringLiteral(":/Resources/Icons/icons8-pause-48.png"), QSize(), QIcon::Normal, QIcon::On);
+        _playPauseBtn->setIcon(icon);
+    }
+
+    _nextBtn = new QToolButton(this);
+    _nextBtn->setObjectName(QStringLiteral("StaticImageNextBtn"));
+    _nextBtn->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    _nextBtn->setIconSize(QSize(16, 16));
+    _nextBtn->setIcon(QIcon(QStringLiteral(":/Resources/Icons/icons8-forward-48.png")));
+
+    playbackLayout->addWidget(_prevBtn);
+    playbackLayout->addWidget(_playPauseBtn);
+    playbackLayout->addWidget(_nextBtn);
+
+    // VLine separator
+    auto* sep2 = new QFrame(this);
+    sep2->setFrameShape(QFrame::VLine);
+    sep2->setFrameShadow(QFrame::Sunken);
+    sep2->setObjectName(QStringLiteral("StaticImageVLine"));
+
+    // 3. List actions (Add, Remove)
+    auto* listActionLayout = new QHBoxLayout();
+    listActionLayout->setSpacing(4);
+
+    _addBtn = new QToolButton(this);
+    _addBtn->setObjectName(QStringLiteral("StaticImageAddBtn"));
+    _addBtn->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    _addBtn->setIconSize(QSize(16, 16));
+    _addBtn->setIcon(QIcon(QStringLiteral(":/Resources/Icons/icons8-add-image-48.png")));
+
+    _removeBtn = new QToolButton(this);
+    _removeBtn->setObjectName(QStringLiteral("StaticImageRemoveBtn"));
+    _removeBtn->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    _removeBtn->setIconSize(QSize(16, 16));
+    _removeBtn->setIcon(QIcon(QStringLiteral(":/Resources/Icons/icons8-delete-48.png")));
+
+    listActionLayout->addWidget(_addBtn);
+    listActionLayout->addWidget(_removeBtn);
+
+    // Assemble top bar
+    topControlLayout->addLayout(fpsLayout);
+    topControlLayout->addWidget(sep1);
+    topControlLayout->addLayout(playbackLayout);
+    topControlLayout->addWidget(sep2);
+    topControlLayout->addLayout(listActionLayout);
+    topControlLayout->addStretch(1);
+
+    mainLayout->addLayout(topControlLayout);
+
+    // 4. File List Widget Layout
+    auto* listLayout = new QVBoxLayout();
+    listLayout->setContentsMargins(12, 0, 12, 12);
+    listLayout->setSpacing(8);
+
     _fileListWidget = new QListWidget(this);
-    _fileListWidget->setStyleSheet(QStringLiteral(
-        "QListWidget {"
-        "  background-color: #ffffff;"
-        "  border: 1px solid #d9e1ea;"
-        "  border-radius: 6px;"
-        "  padding: 4px;"
-        "}"
-        "QListWidget::item {"
-        "  padding: 6px;"
-        "  border-radius: 4px;"
-        "}"
-        "QListWidget::item:selected {"
-        "  background-color: #e2eaf4;"
-        "  color: #007acc;"
-        "  font-weight: bold;"
-        "}"
-    ));
-    mainLayout->addWidget(_fileListWidget, 1); // Expand to fill space
+    _fileListWidget->setObjectName(QStringLiteral("StaticImageFileListWidget"));
+    listLayout->addWidget(_fileListWidget);
 
+    mainLayout->addLayout(listLayout);
+
+    // Connections
+    connect(_fpsSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), this, &QStaticImageControlWidget::handleFpsChanged);
+    connect(_prevBtn, &QToolButton::clicked, this, &QStaticImageControlWidget::handlePrev);
+    connect(_playPauseBtn, &QToolButton::clicked, this, &QStaticImageControlWidget::handlePlayPause);
+    connect(_nextBtn, &QToolButton::clicked, this, &QStaticImageControlWidget::handleNext);
+    connect(_addBtn, &QToolButton::clicked, this, &QStaticImageControlWidget::handleAddImages);
+    connect(_removeBtn, &QToolButton::clicked, this, &QStaticImageControlWidget::handleRemoveSelectedImage);
     connect(_fileListWidget, &QListWidget::itemSelectionChanged, this, &QStaticImageControlWidget::handleListSelectionChanged);
 
-    // Add/Remove buttons
-    auto* listBtnLayout = new QHBoxLayout();
-    _addBtn = new QPushButton(QStringLiteral("Add Image(s)"), this);
-    _addBtn->setStyleSheet(QStringLiteral(
-        "QPushButton {"
-        "  background-color: #007acc;"
-        "  color: white;"
-        "  border: none;"
-        "  border-radius: 4px;"
-        "  padding: 6px 12px;"
-        "  font-weight: bold;"
-        "}"
-        "QPushButton:hover {"
-        "  background-color: #0062a3;"
-        "}"
-    ));
-    
-    _removeBtn = new QPushButton(QStringLiteral("Remove"), this);
-    _removeBtn->setStyleSheet(btnStyle);
-
-    listBtnLayout->addWidget(_addBtn);
-    listBtnLayout->addWidget(_removeBtn);
-    mainLayout->addLayout(listBtnLayout);
-
-    connect(_addBtn, &QPushButton::clicked, this, &QStaticImageControlWidget::handleAddImages);
-    connect(_removeBtn, &QPushButton::clicked, this, &QStaticImageControlWidget::handleRemoveSelectedImage);
-
-    // Divider line
-    auto* frameLine = new QFrame(this);
-    frameLine->setFrameShape(QFrame::HLine);
-    frameLine->setFrameShadow(QFrame::Sunken);
-    frameLine->setStyleSheet(QStringLiteral("color: #d9e1ea;"));
-    mainLayout->addWidget(frameLine);
-
-    // Playback control header
-    auto* playbackHeader = new QLabel(QStringLiteral("Playback Controls:"), this);
-    playbackHeader->setStyleSheet(QStringLiteral("font-weight: bold; font-size: 13px; color: #16202b;"));
-    mainLayout->addWidget(playbackHeader);
-
-    // Control buttons (Prev, Play/Pause, Next)
-    auto* ctrlLayout = new QHBoxLayout();
-    _prevBtn = new QPushButton(QStringLiteral("◀ Prev"), this);
-    _prevBtn->setStyleSheet(btnStyle);
-    
-    _playPauseBtn = new QPushButton(QStringLiteral("▶ Play"), this);
-    _playPauseBtn->setStyleSheet(QStringLiteral(
-        "QPushButton {"
-        "  background-color: #28a745;"
-        "  color: white;"
-        "  border: none;"
-        "  border-radius: 4px;"
-        "  padding: 6px 16px;"
-        "  font-weight: bold;"
-        "}"
-        "QPushButton:hover {"
-        "  background-color: #218838;"
-        "}"
-    ));
-
-    _nextBtn = new QPushButton(QStringLiteral("Next ▶"), this);
-    _nextBtn->setStyleSheet(btnStyle);
-
-    ctrlLayout->addWidget(_prevBtn);
-    ctrlLayout->addWidget(_playPauseBtn);
-    ctrlLayout->addWidget(_nextBtn);
-    mainLayout->addLayout(ctrlLayout);
-
-    connect(_prevBtn, &QPushButton::clicked, this, &QStaticImageControlWidget::handlePrev);
-    connect(_playPauseBtn, &QPushButton::clicked, this, &QStaticImageControlWidget::handlePlayPause);
-    connect(_nextBtn, &QPushButton::clicked, this, &QStaticImageControlWidget::handleNext);
-
-    // FPS Slider
-    auto* fpsHeaderLayout = new QHBoxLayout();
-    auto* fpsLabelTitle = new QLabel(QStringLiteral("Playback Speed:"), this);
-    _fpsLabel = new QLabel(QStringLiteral("5 FPS"), this);
-    _fpsLabel->setAlignment(Qt::AlignRight);
-    
-    fpsHeaderLayout->addWidget(fpsLabelTitle);
-    fpsHeaderLayout->addWidget(_fpsLabel);
-    mainLayout->addLayout(fpsHeaderLayout);
-
-    _fpsSlider = new QSlider(Qt::Horizontal, this);
-    _fpsSlider->setRange(1, 30);
-    _fpsSlider->setValue(5);
-    _fpsSlider->setStyleSheet(QStringLiteral(
-        "QSlider::groove:horizontal {"
-        "  border: 1px solid #d9e1ea;"
-        "  height: 6px;"
-        "  background: #f0f4f8;"
-        "  border-radius: 3px;"
-        "}"
-        "QSlider::handle:horizontal {"
-        "  background: #007acc;"
-        "  border: none;"
-        "  width: 14px;"
-        "  height: 14px;"
-        "  margin: -4px 0;"
-        "  border-radius: 7px;"
-        "}"
-    ));
-    mainLayout->addWidget(_fpsSlider);
-
-    connect(_fpsSlider, &QSlider::valueChanged, this, &QStaticImageControlWidget::handleFpsChanged);
-    
     setEnabled(false); // Enable only when a controller is set
 }
 
@@ -212,6 +177,7 @@ void QStaticImageControlWidget::refreshList() {
         _fileListWidget->addItem(info.fileName());
     }
     _fileListWidget->blockSignals(false);
+    updateButtonStates();
 }
 
 void QStaticImageControlWidget::handleAddImages() {
@@ -262,7 +228,9 @@ void QStaticImageControlWidget::handleNext() {
 void QStaticImageControlWidget::handleFpsChanged(int value) {
     if (_controller) {
         _controller->setFPS(value);
-        _fpsLabel->setText(QStringLiteral("%1 FPS").arg(value));
+        if (_fpsLabel) {
+            _fpsLabel->setText(QStringLiteral("%1 FPS").arg(value));
+        }
     }
 }
 
@@ -272,6 +240,7 @@ void QStaticImageControlWidget::handleListSelectionChanged() {
     if (index >= 0 && index < _fileListWidget->count()) {
         _controller->setCurrentIndex(index);
     }
+    updateButtonStates();
 }
 
 void QStaticImageControlWidget::onCurrentIndexChanged(int index) {
@@ -280,6 +249,7 @@ void QStaticImageControlWidget::onCurrentIndexChanged(int index) {
         _fileListWidget->setCurrentRow(index);
         _fileListWidget->blockSignals(false);
     }
+    updateButtonStates();
 }
 
 void QStaticImageControlWidget::onFilePathsChanged(const QStringList& paths) {
@@ -288,38 +258,18 @@ void QStaticImageControlWidget::onFilePathsChanged(const QStringList& paths) {
     if (_controller) {
         onCurrentIndexChanged(_controller->currentIndex());
     }
+    updateButtonStates();
 }
 
 void QStaticImageControlWidget::onGrabbingStateChanged(bool isGrabbing) {
-    if (isGrabbing) {
-        _playPauseBtn->setText(QStringLiteral("⏸ Pause"));
-        _playPauseBtn->setStyleSheet(QStringLiteral(
-            "QPushButton {"
-            "  background-color: #dc3545;"
-            "  color: white;"
-            "  border: none;"
-            "  border-radius: 4px;"
-            "  padding: 6px 16px;"
-            "  font-weight: bold;"
-            "}"
-            "QPushButton:hover {"
-            "  background-color: #bd2130;"
-            "}"
-        ));
-    } else {
-        _playPauseBtn->setText(QStringLiteral("▶ Play"));
-        _playPauseBtn->setStyleSheet(QStringLiteral(
-            "QPushButton {"
-            "  background-color: #28a745;"
-            "  color: white;"
-            "  border: none;"
-            "  border-radius: 4px;"
-            "  padding: 6px 16px;"
-            "  font-weight: bold;"
-            "}"
-            "QPushButton:hover {"
-            "  background-color: #218838;"
-            "}"
-        ));
-    }
+    QSignalBlocker block(_playPauseBtn);
+    _playPauseBtn->setChecked(isGrabbing);
+}
+
+void QStaticImageControlWidget::updateButtonStates() {
+    bool hasImages = _controller && !_controller->filePaths().isEmpty();
+    _playPauseBtn->setEnabled(hasImages);
+    _prevBtn->setEnabled(hasImages);
+    _nextBtn->setEnabled(hasImages);
+    _removeBtn->setEnabled(hasImages && _fileListWidget->currentRow() >= 0);
 }

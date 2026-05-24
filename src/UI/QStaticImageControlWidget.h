@@ -3,8 +3,8 @@
 #include <QPointer>
 
 class QListWidget;
-class QPushButton;
-class QSlider;
+class QToolButton;
+class QSpinBox;
 class QLabel;
 class StaticImageImagingController;
 
@@ -33,16 +33,17 @@ private slots:
 private:
     void initUI();
     void refreshList();
+    void updateButtonStates();
 
     QPointer<StaticImageImagingController> _controller;
 
     // UI elements
     QListWidget* _fileListWidget = nullptr;
-    QPushButton* _addBtn = nullptr;
-    QPushButton* _removeBtn = nullptr;
-    QPushButton* _playPauseBtn = nullptr;
-    QPushButton* _prevBtn = nullptr;
-    QPushButton* _nextBtn = nullptr;
-    QSlider* _fpsSlider = nullptr;
+    QToolButton* _addBtn = nullptr;
+    QToolButton* _removeBtn = nullptr;
+    QToolButton* _playPauseBtn = nullptr;
+    QToolButton* _prevBtn = nullptr;
+    QToolButton* _nextBtn = nullptr;
+    QSpinBox* _fpsSpinBox = nullptr;
     QLabel* _fpsLabel = nullptr;
 };

@@ -30,8 +30,8 @@ private:
     void initGocator();
     void initStaticImage(const QStringList& filePaths);
 
-    GraphicsEngine* _graphicsEngine;
-    QDockWidget* _controlDock;
+    GraphicsEngine* _graphicsEngine = nullptr;
+    QDockWidget* _graphicsEngineDock = nullptr;
     QDockWidget* _processingDock = nullptr;
 
     Camera* _camera;
@@ -45,4 +45,7 @@ private:
 
     std::unique_ptr<AbstractImagingController> _controller;
     GraphicsEngineSink* _sink = nullptr;
+
+    // View actions helper
+    void setupViewMenus();
 };

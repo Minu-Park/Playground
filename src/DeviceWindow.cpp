@@ -10,6 +10,9 @@
 #include "Controller/StaticImageImagingController.h"
 #include "UI/QStaticImageControlWidget.h"
 #include <QDockWidget>
+#include <QMenuBar>
+#include <QToolBar>
+#include <QAction>
 #include <QLabel>
 #include <QPointer>
 #include <QDebug>
@@ -61,28 +64,27 @@ DeviceWindow::~DeviceWindow() {
 }
 
 void DeviceWindow::initCommon() {
-    // 1. Create GraphicsEngine as central widget
+    // 1. Create GraphicsEngine
     _graphicsEngine = new GraphicsEngine(this);
-    setCentralWidget(_graphicsEngine);
 
-    // 2. Create GraphicsEngineSink
+    // 2. Wrap GraphicsEngine in a Dock Widget
+    _graphicsEngineDock = new QDockWidget(QStringLiteral("Live Viewer"), this);
+    _graphicsEngineDock->setObjectName(QStringLiteral("LiveViewerDock"));
+    _graphicsEngineDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    _graphicsEngineDock->setWidget(_graphicsEngine);
+    addDockWidget(Qt::LeftDockWidgetArea, _graphicsEngineDock);
+    _graphicsEngineDock->show(); // Default ON
+
+    // 3. Create GraphicsEngineSink
     _sink = new GraphicsEngineSink(_graphicsEngine, this);
-
-    // 3. Create right dock (Control Panel placeholder)
-    _controlDock = new QDockWidget(QStringLiteral("Device Control"), this);
-    _controlDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
-    auto* dummyControl = new QLabel(QStringLiteral("Control Panel Placeholder"), _controlDock);
-    dummyControl->setAlignment(Qt::AlignCenter);
-    _controlDock->setWidget(dummyControl);
-    addDockWidget(Qt::RightDockWidgetArea, _controlDock);
 }
 
 void DeviceWindow::initCamera() {
     if (!_camera) return;
 
-    // Create camera widget and set it to control dock
-    _cameraWidget = new QCameraWidget(_controlDock, _camera);
-    _controlDock->setWidget(_cameraWidget);
+    // Create camera widget as the central widget
+    _cameraWidget = new QCameraWidget(this, _camera);
+    setCentralWidget(_cameraWidget);
 
     // Create Camera acquisition controller and bind the sink
     _controller = std::make_unique<CameraImagingController>(_camera, this);
@@ -93,16 +95,20 @@ void DeviceWindow::initCamera() {
     _processingWidget->setController(_controller.get());
 
     _processingDock = new QDockWidget(QStringLiteral("Image Processing Pipeline"), this);
+    _processingDock->setObjectName(QStringLiteral("ProcessingPipelineDock"));
     _processingDock->setWidget(_processingWidget);
     addDockWidget(Qt::BottomDockWidgetArea, _processingDock);
+    _processingDock->hide(); // Default HIDE
+
+    setupViewMenus();
 }
 
 void DeviceWindow::initGocator() {
     if (!_gocator) return;
 
-    // Create Gocator widget and set it to control dock
-    _gocatorWidget = new QGocatorWidget(_controlDock, _gocator);
-    _controlDock->setWidget(_gocatorWidget);
+    // Create Gocator widget as the central widget
+    _gocatorWidget = new QGocatorWidget(this, _gocator);
+    setCentralWidget(_gocatorWidget);
 
     // Create Gocator acquisition controller and bind the sink
     _controller = std::make_unique<GocatorImagingController>(_gocator, this);
@@ -113,8 +119,12 @@ void DeviceWindow::initGocator() {
     _processingWidget->setController(_controller.get());
 
     _processingDock = new QDockWidget(QStringLiteral("Image Processing Pipeline"), this);
+    _processingDock->setObjectName(QStringLiteral("ProcessingPipelineDock"));
     _processingDock->setWidget(_processingWidget);
     addDockWidget(Qt::BottomDockWidgetArea, _processingDock);
+    _processingDock->hide(); // Default HIDE
+
+    setupViewMenus();
 }
 
 void DeviceWindow::initStaticImage(const QStringList& filePaths) {
@@ -122,11 +132,10 @@ void DeviceWindow::initStaticImage(const QStringList& filePaths) {
     auto controller = std::make_unique<StaticImageImagingController>(filePaths, this);
     controller->setSink(_sink);
 
-    // 2. Create static image control widget and host in the control dock
-    _staticImageWidget = new QStaticImageControlWidget(_controlDock);
+    // 2. Create static image control widget as the central widget
+    _staticImageWidget = new QStaticImageControlWidget(this);
     _staticImageWidget->setController(controller.get());
-    _controlDock->setWidget(_staticImageWidget);
-    _controlDock->setWindowTitle(QStringLiteral("Test Image Control"));
+    setCentralWidget(_staticImageWidget);
 
     // 3. Keep unique_ptr reference in the window
     _controller = std::move(controller);
@@ -136,6 +145,39 @@ void DeviceWindow::initStaticImage(const QStringList& filePaths) {
     _processingWidget->setController(_controller.get());
 
     _processingDock = new QDockWidget(QStringLiteral("Image Processing Pipeline"), this);
+    _processingDock->setObjectName(QStringLiteral("ProcessingPipelineDock"));
     _processingDock->setWidget(_processingWidget);
     addDockWidget(Qt::BottomDockWidgetArea, _processingDock);
+    _processingDock->hide(); // Default HIDE
+
+    setupViewMenus();
+}
+
+void DeviceWindow::setupViewMenus() {
+    // Create menu bar inside DeviceWindow if not already present
+    auto* menu = menuBar();
+    auto* viewMenu = menu->addMenu(QStringLiteral("&View"));
+
+    QAction* toggleGeAct = _graphicsEngineDock->toggleViewAction();
+    toggleGeAct->setText(QStringLiteral("Show Live Viewer"));
+    toggleGeAct->setIcon(QIcon(QStringLiteral(":/Resources/Icons/icons8-view-48.png")));
+    viewMenu->addAction(toggleGeAct);
+
+    if (_processingDock) {
+        QAction* toggleProcAct = _processingDock->toggleViewAction();
+        toggleProcAct->setText(QStringLiteral("Show Image Processing"));
+        toggleProcAct->setIcon(QIcon(QStringLiteral(":/Resources/Icons/icons8-photo-editor-48.png")));
+        viewMenu->addAction(toggleProcAct);
+    }
+
+    // Add a toolbar for quick toggle access
+    auto* viewToolBar = addToolBar(QStringLiteral("View Controls"));
+    viewToolBar->setObjectName(QStringLiteral("DeviceWindowViewToolBar"));
+    viewToolBar->setIconSize(QSize(20, 20));
+    viewToolBar->setMovable(false);
+
+    viewToolBar->addAction(toggleGeAct);
+    if (_processingDock) {
+        viewToolBar->addAction(_processingDock->toggleViewAction());
+    }
 }

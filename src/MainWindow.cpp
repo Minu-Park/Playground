@@ -131,18 +131,7 @@ void MainWindow::onAddLmiGocator() {
 }
 
 void MainWindow::onAddTestImageSession() {
-    QStringList files = QFileDialog::getOpenFileNames(
-        this,
-        tr("Select Test Images"),
-        QString(),
-        tr("Images (*.png *.jpg *.jpeg *.bmp *.pgm *.tif);;All Files (*)")
-    );
-
-    if (files.isEmpty()) {
-        return;
-    }
-
-    auto* devWin = new DeviceWindow(files, nullptr);
+    auto* devWin = new DeviceWindow(QStringList(), nullptr);
     devWin->setAttribute(Qt::WA_DeleteOnClose);
     devWin->setWindowTitle(QStringLiteral("Test Images Session"));
     _mdiArea->addSubWindow(devWin);

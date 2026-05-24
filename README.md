@@ -1,47 +1,53 @@
 # Playground
 
-> Basler 카메라, LMI Gocator 3D 센서 및 GraphicsEngine 시각화 모듈을 통합 연동하는 Qt 호스트 애플리케이션 작업공간입니다.
+Playground is a Qt host workspace for composing and testing the Camera, Gocator, GraphicsEngine, and Resources modules.
 
----
+## Purpose
+- Create, remove, compose, and test module integrations.
+- Keep module implementation ownership in `modules/*`.
+- Keep host orchestration, MDI workspace behavior, and integration docs in the parent repo.
+- Use `modules/Resources` for shared Qt resources, QSS, icons, and brand assets.
 
-## 📌 주요 기능
-- **센서 모듈 통합**: `Camera` 및 `Gocator` 센서 모듈의 데이터 취득을 제어하고 통합 UI에 바인딩합니다.
-- **인터페이스 기반 연동**: 중립 데이터 포맷 및 어댑터를 사용하여 장치 라이브러리와 렌더링 라이브러리 간 결합도를 최소화합니다.
-- **스레드 안전 큐잉**: 워커 스레드에서 수신되는 grab 콜백 데이터를 `QMetaObject::invokeMethod`를 통해 안전하게 GUI 스레드로 전달해 렌더링합니다.
-- **MDI workspace**: `MainWindow` hosts device windows in a branded MDI area with a neutral gray background and centered `BASLER_Logo.png` watermark.
-- **Global logging**: `LogManager` captures Qt logs plus module `std::cout`/`std::cerr` logs into the System Logs dock and `lastlog.log`.
-- **Shutdown safety**: MDI subwindows are deleted before `CameraSystem` destruction so device callbacks and camera ownership are cleaned up in order.
+## Current App
+- `MainWindow` owns the MDI workspace, device creation menu, global log dock, and shutdown ordering.
+- `DeviceWindow` owns one imaging session shell.
+- The device control widget is the session central widget.
+- `GraphicsEngine` is hosted in a toggleable `Live Viewer` dock.
+- `QProcessingWidget` is hosted in a hidden-by-default `Image Processing Pipeline` dock.
+- `CameraImagingController`, `GocatorImagingController`, and `StaticImageImagingController` own acquisition/session flow.
+- `GraphicsEngineSink` queues display updates back to the GUI thread.
+- Static image sessions can be created without hardware and populated from disk.
 
-## 🛠️ 요구 사양 및 의존성
-- **OS**: macOS / Windows
-- **언어 표준**: C++20
-- **의존 라이브러리**:
-  - CMake 3.21+ / Qt 6.4+ (Widgets, OpenGL, Xml, Concurrent)
-  - VTK (Qt OpenGL Native Widget 활성화 필요)
-  - Basler Pylon SDK / LMI GoPxL SDK
+## Modules
+The parent repo tracks the modules as git submodules, but each module keeps its own git history and must be checked, changed, committed, and pushed separately.
 
-## 🚀 빌드 및 실행
+| Path | Role |
+| --- | --- |
+| `modules/Camera` | Basler camera runtime and Qt camera control widget |
+| `modules/GraphicsEngine` | Reusable Qt/VTK visualization library |
+| `modules/Gocator` | LMI Gocator runtime and Qt control widget |
+| `modules/Resources` | Shared qrc, QSS, icons, and app assets |
+
+## Build
 ```bash
-# Clone with modules
 git clone --recurse-submodules git@github.com:minu-park/Playground.git
+cd Playground
 
-# Or initialize modules after cloning
-git submodule update --init --recursive
-
-# CMake 프로젝트 구성
 cmake -S . -B build/cmake-build-debug
-
-# 빌드
 cmake --build build/cmake-build-debug --target Playground -j 8
-
-# 실행
 ./build/cmake-build-debug/Playground
 ```
 
-## 📂 디렉토리 구조
-- `src/main.cpp`: 호스트 앱 진입점 및 센서-엔진 간 콜백 바인딩
-- `src/MainWindow.cpp`: MDI workspace, global log dock, device creation, and parent-level shutdown ordering
-- `src/DeviceWindow.cpp`: device-specific control dock and GraphicsEngine callback routing
-- `modules/`: 독립 서브모듈 디렉토리 (Camera, Gocator, GraphicsEngine, Resources)
-- `docs/`: 구조 및 개발 가이드 문서
-- `docs/IMAGING_CONTROLLER_PLAN.md`: staged Camera imaging lifecycle and processing pipeline plan
+If modules are missing after clone:
+```bash
+git submodule sync --recursive
+git submodule update --init --recursive
+```
+
+## Docs
+- `AGENTS.md`: operating rules.
+- `docs/STRUCTURE.md`: current ownership and integration layout.
+- `docs/DEVELOPMENT_GUIDE.md`: working commands, validation loop, and priorities.
+- `docs/IMAGING_CONTROLLER_PLAN.md`: staged imaging lifecycle plan.
+- `docs/DYNAMIC_SCRIPTING_PROPOSAL.md`: dynamic processing direction and current constraints.
+- `docs/STRUCTURAL_REVIEW.md`: current structural risks and decisions needed.

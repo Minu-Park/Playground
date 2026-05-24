@@ -2,7 +2,7 @@
 
 ## Core
 - Playground = module creation/removal/composition/test workspace.
-- `modules/*` are independent git repositories.
+- `modules/*` are git submodules with independent git histories.
 - Parent repo owns only orchestration source and docs.
 - Korean chat, English docs.
 - Concise, word-first replies.
@@ -11,10 +11,10 @@
 - Cross-platform compatibility: design code and assets for Windows, Linux, and macOS.
 
 ## Layout
-- `modules/Camera`: Basler camera module, separate git history.
-- `modules/GraphicsEngine`: reusable visualization library, separate git history.
-- `modules/Gocator`: LMI Gocator module, separate git history.
-- `modules/Resources`: shared Qt qrc/assets/QSS module, separate git history.
+- `modules/Camera`: Basler camera module, submodule, separate git history.
+- `modules/GraphicsEngine`: reusable visualization library, submodule, separate git history.
+- `modules/Gocator`: LMI Gocator module, submodule, separate git history.
+- `modules/Resources`: shared Qt qrc/assets/QSS module, submodule, separate git history.
 - `src`: Playground app source.
 - `CMakeLists.txt`: Playground app CMake entry.
 - `docs`: parent project docs. Excludes this file.
@@ -36,3 +36,4 @@
 - `docs/DEVELOPMENT_GUIDE.md`: priorities, commands, work checklist.
 - `docs/STRUCTURE.md`: current layout, ownership, integration flow.
 - `docs/DYNAMIC_SCRIPTING_PROPOSAL.md`: dynamic OpenCV C++ runtime compilation proposal.
+- `docs/STRUCTURAL_REVIEW.md`: current structural risks and decisions needed.

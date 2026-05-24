@@ -9,7 +9,7 @@ void GraphicsEngineSink::enqueueImage(const QImage& image) {
     if (image.isNull()) return;
     QPointer<GraphicsEngine> target = _engine;
     QMetaObject::invokeMethod(this, [target, image]() {
-        if (!target.isNull()) {
+        if (!target.isNull() && target->isVisible()) {
             target->setImage(image);
         }
     }, Qt::QueuedConnection);
@@ -18,7 +18,7 @@ void GraphicsEngineSink::enqueueImage(const QImage& image) {
 void GraphicsEngineSink::enqueueScene3D(GraphicsScene3D&& scene) {
     QPointer<GraphicsEngine> target = _engine;
     QMetaObject::invokeMethod(this, [target, scene = std::move(scene)]() mutable {
-        if (!target.isNull()) {
+        if (!target.isNull() && target->isVisible()) {
             target->setScene3D(std::move(scene));
         }
     }, Qt::QueuedConnection);
