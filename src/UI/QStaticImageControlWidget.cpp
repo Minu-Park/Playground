@@ -8,7 +8,6 @@
 #include <QLabel>
 #include <QFileDialog>
 #include <QFileInfo>
-#include <QFrame>
 #include <QStyle>
 #include <QDebug>
 
@@ -68,12 +67,6 @@ void QStaticImageControlWidget::initUI() {
     fpsLayout->addWidget(fpsLabelTitle);
     fpsLayout->addWidget(_fpsSpinBox);
 
-    // VLine separator
-    auto* sep1 = new QFrame(this);
-    sep1->setFrameShape(QFrame::VLine);
-    sep1->setFrameShadow(QFrame::Sunken);
-    sep1->setObjectName(QStringLiteral("StaticImageVLine"));
-
     // 2. Playback buttons (Prev, Play/Pause, Next)
     auto* playbackLayout = new QHBoxLayout();
     playbackLayout->setSpacing(4);
@@ -106,12 +99,6 @@ void QStaticImageControlWidget::initUI() {
     playbackLayout->addWidget(_playPauseBtn);
     playbackLayout->addWidget(_nextBtn);
 
-    // VLine separator
-    auto* sep2 = new QFrame(this);
-    sep2->setFrameShape(QFrame::VLine);
-    sep2->setFrameShadow(QFrame::Sunken);
-    sep2->setObjectName(QStringLiteral("StaticImageVLine"));
-
     // 3. List actions (Add, Remove)
     auto* listActionLayout = new QHBoxLayout();
     listActionLayout->setSpacing(4);
@@ -133,9 +120,7 @@ void QStaticImageControlWidget::initUI() {
 
     // Assemble top bar
     topControlLayout->addLayout(fpsLayout);
-    topControlLayout->addWidget(sep1);
     topControlLayout->addLayout(playbackLayout);
-    topControlLayout->addWidget(sep2);
     topControlLayout->addLayout(listActionLayout);
     topControlLayout->addStretch(1);
 

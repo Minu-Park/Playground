@@ -17,6 +17,7 @@ private slots:
     void onAddBaslerCamera();
     void onAddLmiGocator();
     void onAddTestImageSession();
+    void onTileWindows();
     void appendLog(const QString& msg);
 
 private:

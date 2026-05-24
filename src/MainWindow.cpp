@@ -17,6 +17,7 @@
 #include <QPaintEvent>
 #include <QPixmap>
 #include <QFileDialog>
+#include <algorithm>
 
 namespace {
 
@@ -95,7 +96,7 @@ void MainWindow::createMenus() {
 
     QMenu* windowMenu = menuBar()->addMenu(tr("&Window"));
     auto* tileAct = new QAction(tr("Tile Windows"), this);
-    connect(tileAct, &QAction::triggered, _mdiArea, &QMdiArea::tileSubWindows);
+    connect(tileAct, &QAction::triggered, this, &MainWindow::onTileWindows);
     windowMenu->addAction(tileAct);
 
     auto* cascadeAct = new QAction(tr("Cascade Windows"), this);
@@ -136,6 +137,54 @@ void MainWindow::onAddTestImageSession() {
     session->setWindowTitle(QStringLiteral("Test Images Session"));
     _mdiArea->addSubWindow(session);
     session->show();
+}
+
+void MainWindow::onTileWindows() {
+    QList<QMdiSubWindow*> windows;
+    const QList<QMdiSubWindow*> subWindows = _mdiArea->subWindowList();
+    for (QMdiSubWindow* subWindow : subWindows) {
+        if (!subWindow || !subWindow->isVisible() || subWindow->isMinimized()) {
+            continue;
+        }
+        windows.append(subWindow);
+    }
+
+    if (windows.isEmpty()) {
+        return;
+    }
+
+    std::sort(windows.begin(), windows.end(), [](const QMdiSubWindow* lhs, const QMdiSubWindow* rhs) {
+        const QPoint lhsCenter = lhs->geometry().center();
+        const QPoint rhsCenter = rhs->geometry().center();
+        if (lhsCenter.y() == rhsCenter.y()) {
+            return lhsCenter.x() < rhsCenter.x();
+        }
+        return lhsCenter.y() < rhsCenter.y();
+    });
+
+    int columns = 1;
+    while (columns * columns < windows.size()) {
+        ++columns;
+    }
+    const int rows = (windows.size() + columns - 1) / columns;
+    const QRect area = _mdiArea->viewport()->rect();
+    const int cellWidth = area.width() / columns;
+    const int cellHeight = area.height() / rows;
+
+    for (int index = 0; index < windows.size(); ++index) {
+        QMdiSubWindow* window = windows.at(index);
+        if (window->isMaximized()) {
+            window->showNormal();
+        }
+
+        const int row = index / columns;
+        const int column = index % columns;
+        const int x = column * cellWidth;
+        const int y = row * cellHeight;
+        const int width = (column == columns - 1) ? area.width() - x : cellWidth;
+        const int height = (row == rows - 1) ? area.height() - y : cellHeight;
+        window->setGeometry(x, y, width, height);
+    }
 }
 
 void MainWindow::createLogDock() {
