@@ -1,5 +1,5 @@
 #include "MainWindow.h"
-#include "DeviceWindow.h"
+#include "DeviceSession.h"
 #include "CameraSystem.h"
 #include "Gocator.h"
 #include "Utility/LogManager.h"
@@ -114,28 +114,28 @@ void MainWindow::createMenus() {
 
 void MainWindow::onAddBaslerCamera() {
     Camera* camera = _cameraSystem->addCamera();
-    auto* devWin = new DeviceWindow(camera, _cameraSystem.get(), nullptr);
-    devWin->setAttribute(Qt::WA_DeleteOnClose);
-    devWin->setWindowTitle(QStringLiteral("Basler Camera"));
-    _mdiArea->addSubWindow(devWin);
-    devWin->show();
+    auto* session = new DeviceSession(camera, _cameraSystem.get(), nullptr);
+    session->setAttribute(Qt::WA_DeleteOnClose);
+    session->setWindowTitle(QStringLiteral("Basler Camera Session"));
+    _mdiArea->addSubWindow(session);
+    session->show();
 }
 
 void MainWindow::onAddLmiGocator() {
     auto* gocator = new Gocator();
-    auto* devWin = new DeviceWindow(gocator, nullptr);
-    devWin->setAttribute(Qt::WA_DeleteOnClose);
-    devWin->setWindowTitle(QStringLiteral("LMI Gocator"));
-    _mdiArea->addSubWindow(devWin);
-    devWin->show();
+    auto* session = new DeviceSession(gocator, nullptr);
+    session->setAttribute(Qt::WA_DeleteOnClose);
+    session->setWindowTitle(QStringLiteral("LMI Gocator Session"));
+    _mdiArea->addSubWindow(session);
+    session->show();
 }
 
 void MainWindow::onAddTestImageSession() {
-    auto* devWin = new DeviceWindow(QStringList(), nullptr);
-    devWin->setAttribute(Qt::WA_DeleteOnClose);
-    devWin->setWindowTitle(QStringLiteral("Test Images Session"));
-    _mdiArea->addSubWindow(devWin);
-    devWin->show();
+    auto* session = new DeviceSession(QStringList(), nullptr);
+    session->setAttribute(Qt::WA_DeleteOnClose);
+    session->setWindowTitle(QStringLiteral("Test Images Session"));
+    _mdiArea->addSubWindow(session);
+    session->show();
 }
 
 void MainWindow::createLogDock() {

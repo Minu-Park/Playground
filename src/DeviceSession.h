@@ -1,5 +1,7 @@
 #pragma once
 #include <QMainWindow>
+#include <QString>
+#include <QStringList>
 #include "Camera.h"
 #include "Gocator.h"
 
@@ -16,22 +18,25 @@ class QStaticImageControlWidget;
 class AbstractImagingController;
 class GraphicsEngineSink;
 
-class DeviceWindow : public QMainWindow {
+class DeviceSession : public QMainWindow {
     Q_OBJECT
 public:
-    explicit DeviceWindow(Camera* camera, CameraSystem* cameraSystem, QWidget* parent = nullptr);
-    explicit DeviceWindow(Gocator* gocator, QWidget* parent = nullptr);
-    explicit DeviceWindow(const QStringList& filePaths, QWidget* parent = nullptr);
-    ~DeviceWindow() override;
+    explicit DeviceSession(Camera* camera, CameraSystem* cameraSystem, QWidget* parent = nullptr);
+    explicit DeviceSession(Gocator* gocator, QWidget* parent = nullptr);
+    explicit DeviceSession(const QStringList& filePaths, QWidget* parent = nullptr);
+    ~DeviceSession() override;
 
 private:
     void initCommon();
     void initCamera();
     void initGocator();
     void initStaticImage(const QStringList& filePaths);
+    void setControlWidget(QWidget* widget, const QString& title);
+    void createProcessingDock();
+    void setupViewMenu();
 
     GraphicsEngine* _graphicsEngine = nullptr;
-    QDockWidget* _graphicsEngineDock = nullptr;
+    QDockWidget* _controlDock = nullptr;
     QDockWidget* _processingDock = nullptr;
 
     Camera* _camera;
@@ -45,7 +50,4 @@ private:
 
     std::unique_ptr<AbstractImagingController> _controller;
     GraphicsEngineSink* _sink = nullptr;
-
-    // View actions helper
-    void setupViewMenus();
 };

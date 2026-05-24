@@ -44,7 +44,7 @@ add_subdirectory("${PLAYGROUND_MODULES_DIR}/Resources" "${CMAKE_BINARY_DIR}/modu
 qt_add_executable(Playground
     src/main.cpp
     src/MainWindow.cpp
-    src/DeviceWindow.cpp
+    src/DeviceSession.cpp
     src/UI/QProcessingWidget.cpp
     src/UI/QStaticImageControlWidget.cpp
     src/Utility/LogManager.cpp

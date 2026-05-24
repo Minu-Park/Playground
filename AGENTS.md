@@ -35,5 +35,6 @@
 ## Docs
 - `docs/DEVELOPMENT_GUIDE.md`: priorities, commands, work checklist.
 - `docs/STRUCTURE.md`: current layout, ownership, integration flow.
+- `docs/SESSION_ARCHITECTURE.md`: class-by-class session authority and UI/lifecycle boundary.
 - `docs/DYNAMIC_SCRIPTING_PROPOSAL.md`: dynamic OpenCV C++ runtime compilation proposal.
 - `docs/STRUCTURAL_REVIEW.md`: current structural risks and decisions needed.

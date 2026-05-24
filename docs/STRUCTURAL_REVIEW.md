@@ -3,21 +3,21 @@
 ## Scope
 - Review date: 2026-05-24.
 - Scope: parent Playground repo plus observed module status.
-- Code was not changed in this review.
+- Code was changed after this review to introduce the `DeviceSession` authority boundary.
 - Items below are cause -> effect findings.
 
 ## Git State
-- Parent repo has uncommitted host code changes in `src`.
-- `modules/Resources` has a modified `Style.qss` and an untracked `.DS_Store`.
-- `modules/Camera`, `modules/GraphicsEngine`, and `modules/Gocator` are clean at their current submodule pointers.
+- Check parent and touched module repositories separately.
+- Parent commits should contain host code, docs, and submodule pointers only.
+- Module commits should be made inside the touched module repository before the parent submodule pointer commit.
 
 ## Findings
 
-### 1. Viewer Visibility Now Controls Rendering
-- Cause: `GraphicsEngine` was moved from the central widget into a toggleable `Live Viewer` dock, and `GraphicsEngineSink` now checks `target->isVisible()` before calling `setImage` or `setScene3D`.
-- Effect: hidden viewer docks drop incoming display updates instead of retaining latest state.
-- Risk: reopening the viewer can show stale content, and live Camera/Gocator sessions may keep acquiring while rendering is suppressed.
-- Decision needed: choose whether hidden viewers should keep latest-frame state or intentionally pause/drop display updates.
+### 1. Viewer Visibility No Longer Belongs To Device Control Panels
+- Cause: `GraphicsEngine` is the `DeviceSession` central widget instead of a dock attached to a device control surface.
+- Effect: hiding Camera/Gocator/Test Image control panels does not hide the viewer and does not stop display routing.
+- Risk: explicit full-session close and explicit acquisition stop actions must remain visually distinct from dock hide actions.
+- Decision: keep control panel visibility separate from acquisition lifecycle.
 
 ### 2. Empty Image Clears Are Blocked
 - Cause: `GraphicsEngineSink::enqueueImage` returns early for null images.
@@ -25,11 +25,11 @@
 - Risk: stale image content can remain visible after the session becomes empty.
 - Decision needed: add an explicit clear-display API, or allow null-image clear semantics in the sink.
 
-### 3. Session Layout Policy Changed
-- Cause: `DeviceWindow` now uses the control widget as the central widget and docks `GraphicsEngine`.
-- Effect: docs and mental model must treat the live viewer as optional chrome instead of the primary central surface.
-- Risk: future feature work may attach processing or status behavior to the wrong widget area.
-- Decision needed: confirm this control-first layout as the target before more UI work.
+### 3. Session Authority Was Renamed
+- Cause: `DeviceWindow` implied that a closeable control window owned session truth.
+- Effect: the class is now `DeviceSession`, with central `GraphicsEngine` and docked control panels.
+- Risk: old docs or future code may reintroduce UI-widget lifetime as hardware lifetime.
+- Decision: use `DeviceSession` for session authority and reserve control widgets for UI only.
 
 ### 4. Processing UI Is Broader Than Processing Capability
 - Cause: `QProcessingWidget` is created for Camera, Gocator, and Static Image sessions, while the active built-in processing coverage is mainly Image2D and OpenCV compilation is disabled.
@@ -54,9 +54,13 @@
 - Effect: contributors may either ignore submodule pointer updates or accidentally treat module changes as parent-owned.
 - Resolution: docs now state that modules are git submodules for checkout and independent repos for ownership/history.
 
+### 8. Status Styling Is Shared
+- Cause: Camera and Gocator widgets both expose connection state through status labels.
+- Effect: the `Idle`, `Disconnected`, `Connected`, and `Live` palette must stay in `modules/Resources`, while each device widget only sets the dynamic `status` property.
+- Risk: hardcoding colors in device widgets would split the UI contract again.
+- Decision: keep shared status colors in Resources and source-specific state transitions in each device module.
+
 ## Recommended Next Steps
-1. Decide the `GraphicsEngineSink` hidden-viewer policy before changing render/backpressure behavior.
-2. Decide clear-display semantics for empty static image sessions.
-3. Confirm the control-first `DeviceWindow` layout.
-4. Gate processing UI by frame domain until Scene3D processing exists.
-5. Keep dynamic compilation disabled until cross-platform activation is defined.
+1. Decide clear-display semantics for empty static image sessions.
+2. Gate processing UI by frame domain until Scene3D processing exists.
+3. Keep dynamic compilation disabled until cross-platform activation is defined.

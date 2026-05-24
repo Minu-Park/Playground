@@ -10,9 +10,9 @@
 ## Session Types
 | Session | Control Widget | Controller | Display |
 | --- | --- | --- | --- |
-| Basler Camera | `QCameraWidget` | `CameraImagingController` | `GraphicsEngine` in `Live Viewer` dock |
-| LMI Gocator | `QGocatorWidget` | `GocatorImagingController` | `GraphicsEngine` in `Live Viewer` dock |
-| Test Images | `QStaticImageControlWidget` | `StaticImageImagingController` | `GraphicsEngine` in `Live Viewer` dock |
+| Basler Camera | `QCameraWidget` dock | `CameraImagingController` | central `GraphicsEngine` |
+| LMI Gocator | `QGocatorWidget` dock | `GocatorImagingController` | central `GraphicsEngine` |
+| Test Images | `QStaticImageControlWidget` dock | `StaticImageImagingController` | central `GraphicsEngine` |
 
 ## Processing
 - `QProcessingWidget` is available in a hidden-by-default dock.
@@ -24,7 +24,8 @@
 ## Lifecycle
 - `MainWindow` owns `CameraSystem`.
 - `MainWindow` deletes MDI subwindows before `CameraSystem` destruction.
-- `DeviceWindow` destroys its controller before removing/deleting the device object.
+- `DeviceSession` destroys its controller before removing/deleting the device object.
+- Hiding a control dock does not stop the session.
 - Camera controllers preserve `Camera::ready()` timing after processing and display enqueue.
 
 ## Verification Checklist

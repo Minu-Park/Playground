@@ -62,6 +62,6 @@ DynamicLibraryLoader
 - Scene3D processing must preserve range/point-cloud semantics unless a node explicitly changes them.
 
 ## Decisions Needed
-- Whether hidden `Live Viewer` docks should keep receiving latest-frame state.
+- Whether explicit clear-display semantics should allow an empty static-image session to clear the central viewer.
 - Whether Gocator sessions should expose the same processing UI before Scene3D nodes exist.
 - Whether dynamic C++ nodes are acceptable in-process, or should move to an out-of-process sandbox later.

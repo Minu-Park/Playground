@@ -1,14 +1,14 @@
 # Imaging Controller Plan
 
 ## Purpose
-- Move imaging lifecycle ownership out of `DeviceWindow` in staged, testable steps.
+- Move imaging lifecycle ownership out of window chrome in staged, testable steps.
 - Preserve the existing Camera `ready()` permit flow.
 - Prepare image processing for multiple functions, dynamic libraries, and long-term OpenCV/PCL pipeline growth.
 - Keep Gocator lifecycle refactoring deferred until its acquisition/backpressure contract is explicitly defined.
 
 ## Current Problem
 - The controller boundary now exists, but frame-domain and viewer-visibility policy are still not settled.
-- `DeviceWindow` still hosts the visual/control surfaces and owns controller lifetime.
+- `DeviceSession` hosts the visual/control surfaces and owns controller lifetime.
 - Camera/Gocator adapters still compile in the host because they expose SDK payload types.
 - `QProcessingWidget` is available for sessions before Scene3D processing semantics are complete.
 - Cause: acquisition/session ownership was extracted before processing-domain policy was finalized.
@@ -28,10 +28,12 @@ MainWindow
   creates imaging sessions through a factory
   owns workspace chrome, menus, logs, and shutdown ordering
 
-DeviceWindow
-  hosts the view and control surfaces for one session
+DeviceSession
+  owns one session authority boundary
+  hosts the central GraphicsEngine and docked control surfaces
   owns controller lifetime
-  does not own acquisition or processing policy
+  owns acquisition-to-processing-to-display composition
+  does not own module internals
 
 AbstractImagingController
   base interface defining lifecycle contract (start, stop, isGrabbing)
@@ -71,7 +73,7 @@ GraphicsEngineSink
 - `ProcessingPipeline` owns processing order and node execution.
 - `ProcessingRegistry` owns function/library discovery and node creation.
 - `GraphicsEngine` owns rendering and display mode decisions.
-- `DeviceWindow` owns only widget hosting and layout.
+- `DeviceSession` owns session composition, widget hosting, and layout.
 - `MainWindow` owns only workspace-level creation, logs, and shutdown sequencing.
 - Both Camera and Gocator are unified under their respective implementations of `AbstractImagingController`.
 
@@ -134,10 +136,17 @@ GraphicsEngineSink
 
 ### Stage 2: Camera & Gocator ImagingController Skeleton (Completed)
 - `AbstractImagingController`, `CameraImagingController`, and `GocatorImagingController` exist.
-- Camera and Gocator callback registration moved out of `DeviceWindow`.
-- `DeviceWindow` owns `std::unique_ptr<AbstractImagingController>`.
+- Camera and Gocator callback registration moved out of window-level code.
+- `DeviceSession` owns `std::unique_ptr<AbstractImagingController>`.
 - Camera `ready()` timing remains in the Camera controller.
 - Verification: configure/build and open/close Camera and Gocator windows.
+
+### Stage 2b: DeviceSession Authority Boundary (Completed)
+- `DeviceWindow` was renamed to `DeviceSession`.
+- `GraphicsEngine` is the central session widget.
+- Camera, Gocator, and static-image control widgets moved to docked control panels.
+- Hiding control panels no longer implies a session lifecycle change.
+- Verification: configure/build and open/close sessions.
 
 ### Stage 3: GraphicsEngineSink Extraction (Completed)
 - GUI-thread display enqueue lives in `GraphicsEngineSink`.

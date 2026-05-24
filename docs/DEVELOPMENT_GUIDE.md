@@ -39,8 +39,9 @@ git -C modules/Resources diff --check
 ## Current State
 - The app is an MDI workspace.
 - `MainWindow` owns device creation, global log dock wiring, MDI background painting, and shutdown ordering.
-- `DeviceWindow` owns per-session widget hosting, view dock toggles, and controller lifetime.
-- `GraphicsEngine` is docked as `Live Viewer`, not the central widget.
+- `DeviceSession` owns per-session authority, controller lifetime, device control docks, processing docks, and display sink binding.
+- `GraphicsEngine` is the session central widget and remains visualization-only.
+- Device control dock visibility must not change acquisition state.
 - Camera, Gocator, and Static Image sessions are routed through imaging controllers.
 - `GraphicsEngineSink` owns GUI-thread display enqueue.
 - `Resources` owns reusable QSS and assets.
@@ -56,11 +57,12 @@ git -C modules/Resources diff --check
 ## Imaging Controller Work Order
 1. Keep `AbstractImagingController`, `CameraImagingController`, `GocatorImagingController`, and `StaticImageImagingController` as the acquisition/session boundary.
 2. Keep GUI-thread display enqueue in `GraphicsEngineSink`.
-3. Keep `ProcessingPipeline` pass-through-safe before adding expensive processing.
-4. Add or load processing nodes through `ProcessingRegistry`.
-5. Re-enable dynamic library loading only with cross-platform compiler, library suffix, and unload safety.
-6. Extend the pipeline UI only after the backend can represent multiple node instances.
-7. Extend 3D processing only after Scene3D admission and memory policy are explicit.
+3. Keep `DeviceSession` as the owner of session composition and widget layout.
+4. Keep `ProcessingPipeline` pass-through-safe before adding expensive processing.
+5. Add or load processing nodes through `ProcessingRegistry`.
+6. Re-enable dynamic library loading only with cross-platform compiler, library suffix, and unload safety.
+7. Extend the pipeline UI only after the backend can represent multiple node instances.
+8. Extend 3D processing only after Scene3D admission and memory policy are explicit.
 
 ## Rules
 - Parent code belongs in `src`.

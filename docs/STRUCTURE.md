@@ -30,18 +30,20 @@
 - `MainWindow` hosts a `QMdiArea` central workspace.
 - The MDI viewport is painted by the host app with neutral gray `#eeeeee` and `:/Resources/BASLER_Logo.png`.
 - Users can add Basler Camera, LMI Gocator, or Test Image sessions as MDI subwindows.
-- `MainWindow` deletes MDI subwindows before `CameraSystem` destruction so device callbacks and camera ownership are cleaned up in order.
+- `MainWindow` creates `DeviceSession` subwindows and deletes them before `CameraSystem` destruction so device callbacks and camera ownership are cleaned up in order.
 - `LogManager` captures Qt logs plus redirected module `std::cout` and `std::cerr` logs into the System Logs dock and `lastlog.log`.
+- Camera and Gocator status labels use the shared Resources `status` property map for `Idle`, `Disconnected`, `Connected`, and `Live`.
 
-## Device Window
-- `DeviceWindow` is the per-session host shell.
-- The session control widget is the central widget:
+## Device Session
+- `DeviceSession` is the per-session authority boundary.
+- `GraphicsEngine` is the session central widget.
+- The session control widget lives in a docked control panel:
   - `QCameraWidget` for Basler Camera.
   - `QGocatorWidget` for LMI Gocator.
   - `QStaticImageControlWidget` for offline image playback.
-- `GraphicsEngine` lives in a `Live Viewer` dock, visible by default.
 - `QProcessingWidget` lives in an `Image Processing Pipeline` dock, hidden by default.
-- The window menu and toolbar expose dock toggles for the live viewer and processing panel.
+- The `View` menu exposes text dock toggles for the control and processing panels.
+- Hiding a control or processing panel does not stop acquisition.
 - `GraphicsEngineSink` queues display calls to the local `GraphicsEngine`.
 
 ## Imaging Controllers
@@ -65,7 +67,9 @@
 - Parent app must not copy generic module implementation code.
 - Device runtime details stay in `Camera` and `Gocator`.
 - Rendering and neutral display contracts stay in `GraphicsEngine`.
+- Session composition and lifecycle authority stay in `DeviceSession`.
 - Shared QSS, icons, and brand selectors stay in `Resources`.
+- Shared device status colors stay in `Resources`; device widgets may set status properties but must not hardcode the shared palette.
 - Host-only workspace chrome, MDI behavior, and session composition stay in `src`.
 - SDK-specific adapters that expose SDK payload types are compiled by host apps that use those SDK modules.
 - pylon is required for the current Camera and Blaze integration path.
