@@ -27,6 +27,10 @@ cmake -S . -B build/cmake-build-debug
 cmake --build build/cmake-build-debug --target Playground -j 8
 ```
 
+## Linux Runtime Linkage
+- The host executable retains its explicit Qt OpenGL link on Linux because VTK reaches that library through a transitive runtime dependency.
+- Verify a built executable with `ldd build/cmake-build-debug/Playground | rg 'not found|Qt6OpenGL'`.
+
 ## Diff Checks
 ```bash
 git diff --check

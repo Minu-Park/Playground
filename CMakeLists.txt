@@ -85,6 +85,11 @@ set_target_properties(Playground PROPERTIES
     BUILD_RPATH "${PLAYGROUND_MODULES_DIR}/Gocator/GoPxL-SDK/lib"
 )
 
+if(UNIX AND NOT APPLE)
+    # VTK requires Qt OpenGL indirectly; retain the explicitly linked Qt target in DT_NEEDED.
+    target_link_options(Playground PRIVATE "-Wl,--no-as-needed")
+endif()
+
 target_compile_definitions(Playground PRIVATE
     PLAYGROUND_SRC_DIR="${CMAKE_CURRENT_LIST_DIR}/src"
 )
