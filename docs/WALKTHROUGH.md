@@ -28,6 +28,11 @@
 - Hiding a control dock does not stop the session.
 - Camera controllers preserve `Camera::ready()` timing after processing and display enqueue.
 
+## Gocator Status Feedback
+- The `QGocatorWidget` status bubble presents `Idle`, `Disconnected`, `Connected`, and `Live` through the shared Resources styling contract.
+- The adjacent message field reports single/live grab startup, stop progress, and callback-confirmed grab transitions.
+- Parameter edits submit asynchronously; their message reports the requested label and value rather than confirmed sensor acceptance.
+
 ## Verification Checklist
 ```bash
 git status --short --branch

@@ -33,6 +33,7 @@
 - Camera and Gocator control widgets expose status through widget-specific labels and the shared dynamic property `status`.
 - `Resources::installResources(app)` owns the shared style map for `Idle`, `Disconnected`, `Connected`, and `Live`.
 - Source widgets may decide when a connection attempt has happened.
+- `QGocatorWidget` owns its transient operation message: grab completion text follows `GrabbingStatus`, while parameter-edit text reports an asynchronous submission until the API exposes an apply-result signal.
 - Source widgets must not hardcode the shared status palette.
 
 ## Widget Layout
