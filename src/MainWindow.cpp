@@ -51,7 +51,7 @@ private:
 } // namespace
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
-    setWindowTitle(QStringLiteral("Playground (MDI Workspace)"));
+    setWindowTitle(QStringLiteral("Basler Playground"));
     resize(1600, 900);
 
     _cameraSystem = std::make_unique<CameraSystem>();

@@ -94,20 +94,21 @@ target_compile_definitions(Playground PRIVATE
     PLAYGROUND_SRC_DIR="${CMAKE_CURRENT_LIST_DIR}/src"
 )
 
-# find_package(OpenCV QUIET)
-# if(OpenCV_FOUND)
-#     message(STATUS "[Playground] OpenCV found. Enabling live image processing pipeline.")
-#     target_compile_definitions(Playground PRIVATE HAS_OPENCV)
-#
-#     get_filename_component(OPENCV_LIB_DIR "${OpenCV_DIR}/../.." ABSOLUTE)
-#
-#     target_compile_definitions(Playground PRIVATE
-#         OPENCV_INCLUDE_DIR="${OpenCV_INCLUDE_DIRS}"
-#         OPENCV_LIB_DIR="${OPENCV_LIB_DIR}"
-#     )
-#
-#     target_include_directories(Playground PRIVATE ${OpenCV_INCLUDE_DIRS})
-#     target_link_libraries(Playground PRIVATE ${OpenCV_LIBRARIES})
-# else()
-#     message(WARNING "[Playground] OpenCV NOT found. Live image processing pipeline will be disabled.")
-# endif()
+set(OpenCV_DIR "/opt/opencv/lib/cmake/opencv4")
+find_package(OpenCV REQUIRED)
+if(OpenCV_FOUND)
+    message(STATUS "[Playground] OpenCV found. Enabling live image processing pipeline.")
+    target_compile_definitions(Playground PRIVATE HAS_OPENCV)
+
+    get_filename_component(OPENCV_LIB_DIR "${OpenCV_DIR}/../.." ABSOLUTE)
+
+    target_compile_definitions(Playground PRIVATE
+        OPENCV_INCLUDE_DIR="${OpenCV_INCLUDE_DIRS}"
+        OPENCV_LIB_DIR="${OPENCV_LIB_DIR}"
+    )
+
+    target_include_directories(Playground PRIVATE ${OpenCV_INCLUDE_DIRS})
+    target_link_libraries(Playground PRIVATE ${OpenCV_LIBRARIES})
+else()
+    message(WARNING "[Playground] OpenCV NOT found. Live image processing pipeline will be disabled.")
+endif()

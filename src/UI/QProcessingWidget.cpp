@@ -6,6 +6,8 @@
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QBoxLayout>
+#include <QResizeEvent>
 #include <QListWidget>
 #include <QPushButton>
 #include <QSlider>
@@ -40,17 +42,19 @@ void QProcessingWidget::setController(AbstractImagingController* controller) {
 }
 
 void QProcessingWidget::initUI() {
-    auto* mainLayout = new QHBoxLayout(this);
-    mainLayout->setContentsMargins(5, 5, 5, 5);
+    _mainLayout = new QBoxLayout(QBoxLayout::LeftToRight, this);
+    _mainLayout->setContentsMargins(5, 5, 5, 5);
 
     // Left side: Pipeline Manager (Available & Active Pipeline)
     auto* leftLayout = new QVBoxLayout();
 
     auto* availLabel = new QLabel(QStringLiteral("Available Nodes:"), this);
     _availableList = new QListWidget(this);
+    _availableList->setMinimumHeight(100);
 
     auto* pipelineLabel = new QLabel(QStringLiteral("Pipeline Nodes (Check to enable):"), this);
     _pipelineList = new QListWidget(this);
+    _pipelineList->setMinimumHeight(120);
 
     // Connect list widget change to update controller
     connect(_pipelineList, &QListWidget::itemChanged, this, &QProcessingWidget::handleNodeItemChanged);
@@ -79,7 +83,7 @@ void QProcessingWidget::initUI() {
     leftLayout->addWidget(_pipelineList, 2);
     leftLayout->addLayout(btnLayout);
 
-    mainLayout->addLayout(leftLayout, 3);
+    _mainLayout->addLayout(leftLayout, 3);
 
     // Right side: Settings & Dynamic Compiler
     auto* rightLayout = new QVBoxLayout();
@@ -128,6 +132,7 @@ void QProcessingWidget::initUI() {
     _logConsole = new QTextEdit(this);
     _logConsole->setReadOnly(true);
     _logConsole->setFont(monoFont);
+    _logConsole->setMinimumHeight(100);
 
     QPalette p = _logConsole->palette();
     p.setColor(QPalette::Base, Qt::black);
@@ -145,6 +150,7 @@ void QProcessingWidget::initUI() {
     auto* editorTitle = new QLabel(QStringLiteral("Dynamic C++ OpenCV Filter Node (C++20):"), this);
     _codeEditor = new QTextEdit(this);
     _codeEditor->setFont(monoFont);
+    _codeEditor->setMinimumHeight(150);
 
     // Prepopulate with updated modern template using the Qt-independent C contract
     QString templateCode =
@@ -194,7 +200,7 @@ void QProcessingWidget::initUI() {
 
     rightLayout->addWidget(logTitle);
     rightLayout->addWidget(_logConsole, 1);
-    mainLayout->addLayout(rightLayout, 4);
+    _mainLayout->addLayout(rightLayout, 4);
 
     handlePipelineSelectionChanged(); // Initial refresh of slider state
 }
@@ -504,3 +510,19 @@ void QProcessingWidget::loadDynamicNode(const QString& dylibPath) {
     updatePipelineInController();
     handlePipelineSelectionChanged();
 }
+
+void QProcessingWidget::resizeEvent(QResizeEvent* event) {
+    QWidget::resizeEvent(event);
+    if (!_mainLayout) return;
+
+    if (width() < 600) {
+        if (_mainLayout->direction() != QBoxLayout::TopToBottom) {
+            _mainLayout->setDirection(QBoxLayout::TopToBottom);
+        }
+    } else {
+        if (_mainLayout->direction() != QBoxLayout::LeftToRight) {
+            _mainLayout->setDirection(QBoxLayout::LeftToRight);
+        }
+    }
+}
+

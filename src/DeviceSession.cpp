@@ -64,6 +64,7 @@ void DeviceSession::initCommon() {
     _graphicsEngine = new GraphicsEngine(this);
     setCentralWidget(_graphicsEngine);
     _sink = new GraphicsEngineSink(_graphicsEngine, this);
+    setTabPosition(Qt::AllDockWidgetAreas, QTabWidget::North);
 }
 
 void DeviceSession::initCamera() {
@@ -122,7 +123,12 @@ void DeviceSession::createProcessingDock() {
     _processingDock = new QDockWidget(QStringLiteral("Image Processing Pipeline"), this);
     _processingDock->setObjectName(QStringLiteral("ProcessingPipelineDock"));
     _processingDock->setWidget(_processingWidget);
-    addDockWidget(Qt::BottomDockWidgetArea, _processingDock);
+    addDockWidget(Qt::LeftDockWidgetArea, _processingDock);
+
+    if (_controlDock) {
+        tabifyDockWidget(_controlDock, _processingDock);
+        _controlDock->raise();
+    }
     _processingDock->hide(); // Default HIDE
 }
 

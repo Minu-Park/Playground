@@ -4,7 +4,7 @@
 - Playground = module creation/removal/composition/test workspace.
 - `modules/*` are git submodules with independent git histories.
 - Parent repo owns only orchestration source and docs.
-- Korean chat, English docs.
+- Korean chat, Korean reports/docs (English only for search-based docs).
 - Concise, word-first replies.
 - Cause -> effect.
 - Ask before unclear boundary or performance-risk changes.

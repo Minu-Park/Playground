@@ -13,6 +13,8 @@ class QListWidgetItem;
 class AbstractImagingController;
 class ProcessingNode;
 class DynamicLibraryLoader;
+class QBoxLayout;
+class QResizeEvent;
 
 class QProcessingWidget : public QWidget {
     Q_OBJECT
@@ -21,6 +23,9 @@ public:
     ~QProcessingWidget() override;
 
     void setController(AbstractImagingController* controller);
+
+protected:
+    void resizeEvent(QResizeEvent* event) override;
 
 private slots:
     void handleAddNode();
@@ -45,6 +50,7 @@ private:
     AbstractImagingController* _controller = nullptr;
 
     // UI components
+    QBoxLayout* _mainLayout = nullptr;
     QListWidget* _availableList = nullptr;
     QListWidget* _pipelineList = nullptr;
 
