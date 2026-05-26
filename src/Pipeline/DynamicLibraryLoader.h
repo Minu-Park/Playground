@@ -12,7 +12,9 @@ public:
 
     QString name() const override;
     void process(ProcessingFrame& frame) override;
+    std::vector<ParameterSpec> parameterSpecs() const override;
     void setParameter(int index, double value) override;
+    double getParameter(int index) const override;
 
 private:
     std::shared_ptr<DynamicLibraryLoader> _loader;

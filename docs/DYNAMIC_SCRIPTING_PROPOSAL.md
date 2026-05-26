@@ -6,12 +6,11 @@
 - Support C++ dynamic libraries first, with OpenCV optional and PCL/3D deferred.
 
 ## Current State
-- `QProcessingWidget` exists in the parent app.
-- `ProcessingPipeline` and `ProcessingRegistry` exist.
-- `DynamicLibraryLoader` exists and keeps the library mapped while dynamic node wrappers are alive.
-- OpenCV activation in `CMakeLists.txt` is currently commented out.
-- The UI can show processing controls, but OpenCV live compilation is inactive unless `HAS_OPENCV` is restored.
-- A Qt-only built-in `Invert Image` node exists as a basic 2D pipeline test node.
+- `QProcessingWidget` has been refactored into a tabbed layout to separate Pipeline tuning and C++ Scripting.
+- OpenCV CMake integration is fully active. Live dynamic compilation is wired via `clang++` with hidden boilerplate.
+- The C++ Scripting editor features dynamic autocompletion (OpenCV headers parsed at startup) and C++ syntax highlighting.
+- `DynamicLibraryLoader` successfully maps and handles memory for hot-swapped shared libraries.
+- Built-in `Invert Image` and livecompiled C++ filters can be composed in the same pipeline.
 
 ## Target Model
 ```text

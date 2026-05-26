@@ -15,6 +15,9 @@ class ProcessingNode;
 class DynamicLibraryLoader;
 class QBoxLayout;
 class QResizeEvent;
+class QTabWidget;
+class QToolButton;
+class QVBoxLayout;
 
 class QProcessingWidget : public QWidget {
     Q_OBJECT
@@ -34,7 +37,8 @@ private slots:
     void handleMoveDown();
     void handleNodeItemChanged(QListWidgetItem* item);
     void handlePipelineSelectionChanged();
-    void handleSliderValueChanged();
+    void handleDynamicSliderChanged();
+    void handleDynamicSpinBoxChanged(double value);
 
     // Compiler slots
     void handleCompile();
@@ -51,19 +55,26 @@ private:
 
     // UI components
     QBoxLayout* _mainLayout = nullptr;
+    QTabWidget* _tabWidget = nullptr;
     QListWidget* _availableList = nullptr;
     QListWidget* _pipelineList = nullptr;
 
-    QPushButton* _addButton = nullptr;
-    QPushButton* _removeButton = nullptr;
-    QPushButton* _moveUpButton = nullptr;
-    QPushButton* _moveDownButton = nullptr;
+    QToolButton* _addButton = nullptr;
+    QToolButton* _removeButton = nullptr;
+    QToolButton* _moveUpButton = nullptr;
+    QToolButton* _moveDownButton = nullptr;
 
-    QSlider* _slider1 = nullptr;
-    QSlider* _slider2 = nullptr;
-    QLabel* _slider1Label = nullptr;
-    QLabel* _slider2Label = nullptr;
+    // Dynamic Parameter UI Tracking
+    struct ParameterControl {
+        int index;
+        QLabel* nameLabel = nullptr;
+        QLabel* valueLabel = nullptr;
+        QWidget* controlWidget = nullptr; // Can be QSlider (int) or QDoubleSpinBox (double)
+    };
+
     QLabel* _selectedNodeLabel = nullptr;
+    QVBoxLayout* _paramLayout = nullptr;
+    std::vector<ParameterControl> _dynamicControls;
 
     // Dynamic compiler UI (OpenCV optional)
     QTextEdit* _codeEditor = nullptr;

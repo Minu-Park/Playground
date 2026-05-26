@@ -37,11 +37,10 @@
 - Risk: UI suggests 3D processing capability that is not structurally ready.
 - Decision needed: hide or disable the processing dock for Scene3D sessions until Scene3D nodes exist, or implement explicit Scene3D pass-through status.
 
-### 5. Dynamic Compilation Is Partially Wired
-- Cause: `QProcessingWidget`, `ProcessingRegistry`, and `DynamicLibraryLoader` are present, but OpenCV CMake activation is commented out.
-- Effect: runtime compilation is visible as a direction but not an active baseline feature.
-- Risk: stale assumptions about OpenCV paths, library suffixes, and compiler availability can re-enter the live path.
-- Decision needed: either keep it explicitly disabled, or re-enable it with cross-platform compiler and unload policy.
+### 5. Dynamic Compilation Is Fully Implemented and Optimized
+- Cause: `QProcessingWidget` has been refactored into a tabbed layout to solve side-dock space constraints.
+- Effect: Added dynamic node parameter rendering, simplified script-style OpenCV template code generation, a dark-themed terminal compiler output, auto-completion popups (using QCompleter with OpenCV headers auto-parsed at startup), and live C++ syntax highlighting.
+- Risk: Cross-platform compiler availability (clang++/g++) is expected at runtime. PCH or precompiled plugins can be added for further optimization.
 
 ### 6. Gocator Runtime Path Is Platform-Specific
 - Cause: parent `CMakeLists.txt` sets `BUILD_RPATH` directly to `modules/Gocator/GoPxL-SDK/lib`.
@@ -63,4 +62,4 @@
 ## Recommended Next Steps
 1. Decide clear-display semantics for empty static image sessions.
 2. Gate processing UI by frame domain until Scene3D processing exists.
-3. Keep dynamic compilation disabled until cross-platform activation is defined.
+3. Optimize compiler speed using Precompiled Headers (PCH) for OpenCV if dynamic compilation delay becomes a bottleneck.

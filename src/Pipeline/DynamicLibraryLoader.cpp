@@ -24,11 +24,26 @@ void DynamicLibraryNode::process(ProcessingFrame& frame) {
     }
 }
 
+std::vector<ParameterSpec> DynamicLibraryNode::parameterSpecs() const {
+    if (_rawNode) {
+        return _rawNode->parameterSpecs();
+    }
+    return {};
+}
+
 void DynamicLibraryNode::setParameter(int index, double value) {
     if (_rawNode) {
         _rawNode->setParameter(index, value);
     }
 }
+
+double DynamicLibraryNode::getParameter(int index) const {
+    if (_rawNode) {
+        return _rawNode->getParameter(index);
+    }
+    return 0.0;
+}
+
 
 // DynamicLibraryLoader implementation
 DynamicLibraryLoader::DynamicLibraryLoader(const QString& path)
