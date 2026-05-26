@@ -77,6 +77,7 @@
 - SDK-specific adapters that expose SDK payload types are compiled by host apps that use those SDK modules.
 - pylon is required for the current Camera and Blaze integration path.
 - GoPxL SDK is required for the current Gocator integration path.
+- The host and GraphicsEngine public integration contract use a C++17 compilation baseline.
 - Processing pipeline changes must not bypass the Camera `ready()` flow-control contract.
 
 ## Known Structural Issues
