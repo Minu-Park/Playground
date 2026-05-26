@@ -1,65 +1,32 @@
 # Structural Review
 
 ## Scope
-- Review date: 2026-05-24.
-- Scope: parent Playground repo plus observed module status.
-- Code was changed after this review to introduce the `DeviceSession` authority boundary.
-- Items below are cause -> effect findings.
+- Review date: 2026-05-26.
+- Scope: parent app, modified `Camera` and `GraphicsEngine` module surfaces.
+- Purpose: unclear ownership boundaries only. Current layout belongs in `STRUCTURE.md`; completed history belongs in git.
 
-## Git State
-- Check parent and touched module repositories separately.
-- Parent commits should contain host code, docs, and submodule pointers only.
-- Module commits should be made inside the touched module repository before the parent submodule pointer commit.
+## Active Boundary Debt
 
-## Findings
+| Priority | Boundary | Cause | Effect | Required Direction |
+| --- | --- | --- | --- | --- |
+| High | Camera stream configuration vs display profile policy | `Camera::configureStereoMiniStream()` selects components and hardcodes mapping mode `None` while registration is a display/use-case choice. | Raw color and hardware-registered color cannot be selected explicitly; future UI risks writing acquisition internals directly. | Extract selectable pylon stream profiles owned by Camera; host selects a named profile only. |
+| High | Pylon frame decoding vs scene assembly | `PylonScene3DAdapter.cpp` contains component lookup, byte/stride safety, RGB conversion, direct XYZ decoding, ace reconstruction, metadata assembly, and Blaze delegation. | New auxiliary channels or formats increase one hot-path file and make product regression isolation difficult. | Split shared pylon buffer decoder, product geometry decoder, and neutral scene assembler after current hardware baseline is verified. |
+| High | Scene state vs display policy vs UI synchronization | `GraphicsEngine::applyScene3D()` mutates retained resources, chooses default mode, applies backend data, and updates chrome. | Adding registered color/channel selection risks state and UI regressions in the same function. | Introduce a scene-state transition/result step before backend/chrome work. |
+| High | Color image identity vs registration UX | `GraphicsSceneState::image` holds ordinary 2D images and stereo color resources, while registration metadata is stored but not exposed as a selectable view/state. | Users cannot distinguish raw color, registered color, and scalar range presentation reliably. | Define color/range channel-selection UX before adding hardware registration defaults. |
+| Medium | Host orchestration vs SDK conversion | `CameraImagingController` includes and invokes a pylon adapter because the module callback exposes raw `CPylonDataContainer`. | Parent host must compile against pylon transformation details to integrate Camera. | Keep as current integration boundary; reconsider converted callback/public adapter API only when another host consumer exists. |
+| Medium | Blaze compatibility vs pylon common decoder | Blaze remains a separate adapter while Stereo paths implement new component/stride handling in the facade. | Shared safety fixes can diverge across Basler 3D families. | Consolidate common buffer validation after Blaze regression tests exist. |
+| Medium | Processing dock vs frame domain | Processing controls are hosted for sessions although Scene3D node semantics remain undefined. | UI advertises capability beyond implemented processing behavior. | Gate or label Scene3D pass-through before enabling 3D node work. |
+| Medium | Empty source vs display clearing | `GraphicsEngineSink::enqueueImage` ignores null images used when the last static image is removed. | Stale display can survive an empty session. | Add explicit clear-display semantics. |
+| Medium | Dynamic loader ABI vs compile UI | `DynamicLibraryLoader` expects `create_node`, while `QProcessingWidget` resolves `process_image` and owns a second wrapper/ABI; compile output is `clang++`/`.dylib`-fixed. | Enabled OpenCV builds expose a platform-specific path with two extension contracts. | Decide one ABI and extract platform-aware compiler/load policy from the widget. |
+| Low | Runtime dependency policy vs cross-platform claim | Gocator/pylon runtime discovery and deployment handling are platform-specific. | Windows/macOS support cannot be claimed from Linux integration builds alone. | Maintain per-platform runtime verification before distribution claims. |
 
-### 1. Viewer Visibility No Longer Belongs To Device Control Panels
-- Cause: `GraphicsEngine` is the `DeviceSession` central widget instead of a dock attached to a device control surface.
-- Effect: hiding Camera/Gocator/Test Image control panels does not hide the viewer and does not stop display routing.
-- Risk: explicit full-session close and explicit acquisition stop actions must remain visually distinct from dock hide actions.
-- Decision: keep control panel visibility separate from acquisition lifecycle.
+## Resolved In This Cleanup
+- Removed duplicate `GraphicsScene3DRequest::includeColorImage`; `GraphicsScene3DContent::ColorImage` is now the single request signal.
+- Moved decoder facts out of the `Camera` class contract into `PylonScene3DProfile`; adapter no longer depends on the acquisition class.
+- Removed unused profile capability-looking fields; actual frame components remain authoritative for RGB decoding.
+- Deleted completed/redundant host walkthrough and imaging-controller plan documents.
+- Removed hardcoded `/opt/opencv` CMake discovery; OpenCV now follows optional package discovery while dynamic ABI/platform policy remains listed debt.
 
-### 2. Empty Image Clears Are Blocked
-- Cause: `GraphicsEngineSink::enqueueImage` returns early for null images.
-- Effect: `StaticImageImagingController::removeImage` cannot clear the viewer after the last file is removed because it enqueues `QImage()`.
-- Risk: stale image content can remain visible after the session becomes empty.
-- Decision needed: add an explicit clear-display API, or allow null-image clear semantics in the sink.
-
-### 3. Session Authority Was Renamed
-- Cause: `DeviceWindow` implied that a closeable control window owned session truth.
-- Effect: the class is now `DeviceSession`, with central `GraphicsEngine` and docked control panels.
-- Risk: old docs or future code may reintroduce UI-widget lifetime as hardware lifetime.
-- Decision: use `DeviceSession` for session authority and reserve control widgets for UI only.
-
-### 4. Processing UI Is Broader Than Processing Capability
-- Cause: `QProcessingWidget` is created for Camera, Gocator, and Static Image sessions, while the active built-in processing coverage is mainly Image2D and OpenCV compilation is disabled.
-- Effect: Gocator users can see a processing panel before Scene3D processing semantics are defined.
-- Risk: UI suggests 3D processing capability that is not structurally ready.
-- Decision needed: hide or disable the processing dock for Scene3D sessions until Scene3D nodes exist, or implement explicit Scene3D pass-through status.
-
-### 5. Dynamic Compilation Is Fully Implemented and Optimized
-- Cause: `QProcessingWidget` has been refactored into a tabbed layout to solve side-dock space constraints.
-- Effect: Added dynamic node parameter rendering, simplified script-style OpenCV template code generation, a dark-themed terminal compiler output, auto-completion popups (using QCompleter with OpenCV headers auto-parsed at startup), and live C++ syntax highlighting.
-- Risk: Cross-platform compiler availability (clang++/g++) is expected at runtime. PCH or precompiled plugins can be added for further optimization.
-
-### 6. Gocator Runtime Path Is Platform-Specific
-- Cause: parent `CMakeLists.txt` sets `BUILD_RPATH` directly to `modules/Gocator/GoPxL-SDK/lib`.
-- Effect: macOS/Linux local builds can find SDK libraries, but Windows runtime deployment is not represented.
-- Risk: cross-platform compatibility is incomplete despite project policy.
-- Decision needed: add platform-specific runtime handling before claiming Windows build readiness.
-
-### 7. Submodule Language Was Ambiguous
-- Cause: docs alternated between "independent repos" and "submodules" without explaining both are true.
-- Effect: contributors may either ignore submodule pointer updates or accidentally treat module changes as parent-owned.
-- Resolution: docs now state that modules are git submodules for checkout and independent repos for ownership/history.
-
-### 8. Status Styling Is Shared
-- Cause: Camera and Gocator widgets both expose connection state through status labels.
-- Effect: the `Idle`, `Disconnected`, `Connected`, and `Live` palette must stay in `modules/Resources`, while each device widget only sets the dynamic `status` property.
-- Risk: hardcoding colors in device widgets would split the UI contract again.
-- Decision: keep shared status colors in Resources and source-specific state transitions in each device module.
-
-## Recommended Next Steps
-1. Decide clear-display semantics for empty static image sessions.
-2. Gate processing UI by frame domain until Scene3D processing exists.
-3. Optimize compiler speed using Precompiled Headers (PCH) for OpenCV if dynamic compilation delay becomes a bottleneck.
+## Repository Rule
+- Parent commits contain host code, docs, and submodule pointers.
+- Camera and GraphicsEngine implementation changes are committed in their own module repositories first.

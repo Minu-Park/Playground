@@ -94,8 +94,11 @@ target_compile_definitions(Playground PRIVATE
     PLAYGROUND_SRC_DIR="${CMAKE_CURRENT_LIST_DIR}/src"
 )
 
-set(OpenCV_DIR "/opt/opencv/lib/cmake/opencv4")
-find_package(OpenCV REQUIRED)
+if(POLICY CMP0146)
+    # Current OpenCV config still probes CUDA through CMake's legacy module.
+    cmake_policy(SET CMP0146 OLD)
+endif()
+find_package(OpenCV QUIET)
 if(OpenCV_FOUND)
     message(STATUS "[Playground] OpenCV found. Enabling live image processing pipeline.")
     target_compile_definitions(Playground PRIVATE HAS_OPENCV)

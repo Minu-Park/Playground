@@ -2,7 +2,7 @@
 #include "Controller/GraphicsEngineSink.h"
 #include "Pipeline/ProcessingFrame.h"
 #include "engine/GraphicsEngine.h"
-#include "BlazeScene3DAdapter.h"
+#include "PylonScene3DAdapter.h"
 #include "Utility/Qt/QtConverter.h"
 #include <QPointer>
 #include <QDebug>
@@ -158,7 +158,7 @@ void CameraImagingController::registerCallbacks() {
         });
 
     // 3. 3D Grab callback
-    const BlazeScene3DAdapter scene3DAdapter;
+    const PylonScene3DAdapter scene3DAdapter;
     _grab3DCallbackId = _camera->registerGrab3DCallback(
         [this, scene3DAdapter](const Pylon::CPylonDataContainer& container, size_t) {
             if (!_sink) {
@@ -173,7 +173,8 @@ void CameraImagingController::registerCallbacks() {
             }
 
             const GraphicsScene3DRequest request = engine->scene3DRequest();
-            auto scene = scene3DAdapter.convert(container, request);
+            const PylonScene3DProfile profile = _camera->scene3DProfile();
+            auto scene = scene3DAdapter.convert(container, request, profile);
             if (scene.has_value()) {
                 ProcessingFrame frame;
                 frame.payload = std::move(*scene);

@@ -53,7 +53,8 @@ git submodule update --init --recursive
 - `AGENTS.md`: operating rules.
 - `docs/STRUCTURE.md`: current ownership and integration layout.
 - `docs/DEVELOPMENT_GUIDE.md`: working commands, validation loop, and priorities.
+- `docs/NEXT_SESSION_HANDOFF.md`: active published baseline and next-session work order.
 - `docs/SESSION_ARCHITECTURE.md`: class-by-class session ownership boundary.
-- `docs/IMAGING_CONTROLLER_PLAN.md`: staged imaging lifecycle plan.
-- `docs/DYNAMIC_SCRIPTING_PROPOSAL.md`: dynamic processing direction and current constraints.
+- `docs/STEREO_3D_CAMERA_INTEGRATION.md`: current Stereo 3D contract and remaining decisions.
+- `docs/DYNAMIC_PROCESSING_STATUS.md`: dynamic processing state and unresolved boundary.
 - `docs/STRUCTURAL_REVIEW.md`: current structural risks and decisions needed.

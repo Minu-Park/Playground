@@ -20,7 +20,7 @@
 | `docs` | Playground repo | Parent project docs |
 | `AGENTS.md` | Playground repo | Always-read operating rules |
 | `build` | ignored | Parent CMake build directories |
-| `modules/Camera` | Camera repo | Basler camera runtime, pylon callbacks, Qt camera control widget |
+| `modules/Camera` | Camera repo | Basler 2D/blaze/Stereo mini/Stereo ace runtime, pylon callbacks, Scene3D adapters, Qt camera control widget |
 | `modules/GraphicsEngine` | GraphicsEngine repo | Reusable Qt/VTK visualization widget library |
 | `modules/Gocator` | Gocator repo | LMI Gocator runtime, discovery, grabbing, and Qt control widget |
 | `modules/Resources` | Resources repo | Shared Qt qrc bundle, icons, app stylesheet, brand selectors |
@@ -51,7 +51,7 @@
 
 ## Imaging Controllers
 - `AbstractImagingController` defines the session lifecycle interface.
-- `CameraImagingController` owns Camera callback registration, pipeline execution, display sink binding, and Camera `ready()` timing.
+- `CameraImagingController` owns Camera callback registration, `PylonScene3DProfile`-aware `PylonScene3DAdapter` invocation, pipeline execution, display sink binding, and Camera `ready()` timing.
 - `GocatorImagingController` owns Gocator callback registration, pipeline execution, and display sink binding.
 - `StaticImageImagingController` owns file list playback, FPS timing, pipeline execution, and display sink binding.
 - `ProcessingPipeline` owns ordered processing node instances.
@@ -60,7 +60,10 @@
 
 ## Data Flow
 - Camera 2D frames convert from pylon image payloads to `QImage`, pass through `ProcessingPipeline`, then enqueue to `GraphicsEngine::setImage`.
-- Camera Blaze 3D frames convert through `BlazeScene3DAdapter`, pass through `ProcessingPipeline`, then enqueue to `GraphicsEngine::setScene3D`.
+- Camera Blaze 3D frames route through `PylonScene3DAdapter` to the existing Blaze conversion path, then enqueue as `GraphicsScene3D`.
+- Camera Stereo mini color 3D frames preserve Source3 RGB display and associate it to direct `Range/Coord3D_ABC32f` geometry for point colors using the official sample mapping rule.
+- Camera Stereo ace color 3D frames use `Intensity/RGB8` plus `Disparity/Coord3D_C16` and captured calibration values to produce neutral scene data.
+- `GraphicsScene3D` can carry a color image and registration metadata; organized `RangeFrame::rgb` feeds color point-cloud generation without storing live point-cloud buffers in the engine state.
 - Gocator data sets convert through `GocatorDataSetScene3DAdapter`, pass through `ProcessingPipeline`, then enqueue to `GraphicsEngine::setScene3D`.
 - Static images load from disk as `QImage`, pass through `ProcessingPipeline`, then enqueue to `GraphicsEngine::setImage`.
 - Device callbacks originate outside the GUI thread. Display updates must stay queued to the GUI thread.
@@ -75,7 +78,7 @@
 - Shared device status colors stay in `Resources`; device widgets may set status properties but must not hardcode the shared palette.
 - Host-only workspace chrome, MDI behavior, and session composition stay in `src`.
 - SDK-specific adapters that expose SDK payload types are compiled by host apps that use those SDK modules.
-- pylon is required for the current Camera and Blaze integration path.
+- pylon is required for Camera paths; Stereo mini and Stereo ace require their installed pylon 3D Supplementary Package/producer at runtime.
 - GoPxL SDK is required for the current Gocator integration path.
 - The host and GraphicsEngine public integration contract use a C++17 compilation baseline.
 - Processing pipeline changes must not bypass the Camera `ready()` flow-control contract.

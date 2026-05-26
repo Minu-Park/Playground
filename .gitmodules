@@ -1,6 +1,6 @@
 [submodule "modules/Camera"]
 	path = modules/Camera
-	url = git@github.com:baslerkr/Camera.git
+	url = git@github.com:BaslerKR/Camera.git
 [submodule "modules/GraphicsEngine"]
 	path = modules/GraphicsEngine
 	url = git@github.com:Minu-Park/GraphicsEngine.git

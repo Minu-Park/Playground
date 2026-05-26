@@ -22,7 +22,7 @@
 | `DeviceSession` | One session authority, device lifetime binding, controller lifetime, processing dock, control dock, display sink binding | Module internals, generic rendering implementation |
 | `GraphicsEngine` | Central visualization widget, 2D/3D display state, render interaction | Camera/Gocator lifecycle, processing graph, session policy |
 | `AbstractImagingController` | Common start/stop/grab-state contract | Widget layout, app shell menus |
-| `CameraImagingController` | Camera callback registration, `Camera::ready()` admission, conversion, pipeline execution, display enqueue | `MainWindow`, dock layout |
+| `CameraImagingController` | Camera callback registration, `Camera::ready()` admission, `PylonScene3DProfile` 기반 2D/3D conversion, pipeline execution, display enqueue | `MainWindow`, dock layout |
 | `GocatorImagingController` | Gocator callback registration, conversion, pipeline execution, display enqueue | `MainWindow`, dock layout |
 | `StaticImageImagingController` | Offline image list playback, FPS timing, pipeline execution, display enqueue | File picker UI layout |
 | `GraphicsEngineSink` | Queued GUI-thread delivery to the session `GraphicsEngine` | Acquisition policy, processing policy |
@@ -62,6 +62,7 @@ DeviceSession
 
 ## Routing Policy
 - Controllers convert device payloads into `ProcessingFrame`.
+- Camera 3D routing keeps Blaze compatibility and converts Stereo mini/Stereo ace mono/color inputs through the Camera module's pylon Scene3D adapter.
 - `ProcessingPipeline` runs before display enqueue.
 - `GraphicsEngineSink` delivers processed output to the session `GraphicsEngine` on the GUI thread.
 - `GraphicsEngine` remains unaware of source type.
@@ -75,4 +76,4 @@ DeviceSession
 ## Current Deferrals
 - Hidden-viewer retention policy is no longer tied to a dock, but explicit clear-display semantics remain unresolved.
 - Scene3D processing capability is still policy-limited until Scene3D nodes exist.
-- Dynamic OpenCV compilation remains disabled until cross-platform activation is defined.
+- Dynamic OpenCV compilation is enabled only when OpenCV is found; its ABI and cross-platform compiler/output policy remain unresolved.
