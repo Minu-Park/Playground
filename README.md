@@ -20,6 +20,8 @@ Playground is a Qt host workspace for composing and testing the Camera, Gocator,
 - Hiding a device control panel does not stop acquisition; explicit stop/remove actions own that lifecycle change.
 - Camera and Gocator control widgets share the Resources status contract: `Idle`, `Disconnected`, `Connected`, and `Live`.
 - `QGocatorWidget` reports grab transitions and submitted parameter edits through its status-bar message field; parameter text reflects submission until the module exposes apply results.
+- `Gocator::syslog()` flushes each operation record so redirected lifecycle output reaches the host log dock promptly.
+- Test Image controls use compact neutral button, FPS, and selection styling from `modules/Resources`.
 
 ## Modules
 The parent repo tracks the modules as git submodules, but each module keeps its own git history and must be checked, changed, committed, and pushed separately.

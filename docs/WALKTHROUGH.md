@@ -6,6 +6,7 @@
 - The System Logs dock receives Qt logs and redirected module stream logs.
 - Shared styling and icons are installed through `Resources::installResources(app)`.
 - Device sessions route acquisition through imaging controllers and display through `GraphicsEngineSink`.
+- Test Image playback controls receive their compact neutral control/list styling from `modules/Resources/Style.qss`.
 
 ## Session Types
 | Session | Control Widget | Controller | Display |
@@ -32,6 +33,7 @@
 - The `QGocatorWidget` status bubble presents `Idle`, `Disconnected`, `Connected`, and `Live` through the shared Resources styling contract.
 - The adjacent message field reports single/live grab startup, stop progress, and callback-confirmed grab transitions.
 - Parameter edits submit asynchronously; their message reports the requested label and value rather than confirmed sensor acceptance.
+- `Gocator::syslog()` flushes operation records so redirected host logging follows these operations promptly.
 
 ## Verification Checklist
 ```bash

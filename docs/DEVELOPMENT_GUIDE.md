@@ -46,6 +46,8 @@ git -C modules/Resources diff --check
 - `GraphicsEngineSink` owns GUI-thread display enqueue.
 - `Resources` owns reusable QSS and assets.
 - `QGocatorWidget` reports callback-confirmed grab transitions and asynchronous parameter update submissions in its local status bar.
+- `Gocator::syslog()` flushes operation records for immediate host-side redirected logging.
+- Test Image control sizing and neutral selection styling remain in `modules/Resources/Style.qss`.
 - OpenCV CMake activation is commented out; dynamic processing UI is present but OpenCV live compilation is inactive unless `HAS_OPENCV` is restored.
 
 ## Current Priority

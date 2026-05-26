@@ -32,9 +32,10 @@
 - Users can add Basler Camera, LMI Gocator, or Test Image sessions as MDI subwindows.
 - The Window menu tiles visible, non-minimized MDI subwindows by their current spatial order so left-to-right placement stays predictable.
 - `MainWindow` creates `DeviceSession` subwindows and deletes them before `CameraSystem` destruction so device callbacks and camera ownership are cleaned up in order.
-- `LogManager` captures Qt logs plus redirected module `std::cout` and `std::cerr` logs into the System Logs dock and `lastlog.log`.
+- `LogManager` captures Qt logs plus redirected module `std::cout` and `std::cerr` logs into the System Logs dock and `lastlog.log`; `Gocator::syslog()` flushes each operation record for prompt forwarding.
 - Camera and Gocator status labels use the shared Resources `status` property map for `Idle`, `Disconnected`, `Connected`, and `Live`.
 - `QGocatorWidget` keeps operation feedback local to its status bar: grab messages follow requested and callback-confirmed transitions, while parameter messages identify asynchronous update submissions.
+- Test Image tool buttons, FPS input, and list selection use compact neutral styling owned by `modules/Resources`.
 
 ## Device Session
 - `DeviceSession` is the per-session authority boundary.

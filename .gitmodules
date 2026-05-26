@@ -9,4 +9,4 @@
 	url = git@github.com:Minu-Park/Gocator.git
 [submodule "modules/Resources"]
 	path = modules/Resources
-	url = git@github.com:minu-park/Resources.git
+	url = git@github.com:Minu-Park/Resources.git
