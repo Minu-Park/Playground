@@ -2,16 +2,18 @@
 
 ## 지시
 - 이 문서는 다음 작업 세션의 시작점이다.
-- 먼저 부모 저장소와 `modules/Camera`, `modules/GraphicsEngine` 상태를 각각 확인한다.
+- 먼저 부모 저장소와 `modules/Camera`, `modules/GraphicsEngine`, `modules/Gocator`, `modules/Resources` 상태를 각각 확인한다.
+- 모든 submodule은 fetched upstream 최신 commit과 일치하는 상태를 유지한다. 선행 upstream commit이 있으면 parent 통합 검증 후 pointer를 갱신한다.
 - 이 문서와 함께 게시된 부모/모듈 커밋을 기준으로 이어서 검증/수정한다.
 - 다음 목표는 Stereo mini 컬러 점군 실장치 확인과 registration profile 정책 확정이다.
 
 ## 현재 상태
-- 기준일: 2026-05-26.
+- 기능 게시 기준일: 2026-05-26. 문서/원격 재검증일: 2026-05-27.
 - Camera module 변경은 `f73be55` (`Add stereo color 3D scene adapter support`)로 `origin/main`에 게시했다.
 - GraphicsEngine module 변경은 `c5e2806` (`Support color images and RGB range point clouds`)로 `origin/main`에 게시했다.
-- 부모 repo는 이 문서와 함께 두 submodule pointer, integration code, 구조/상태 문서 정리를 게시한다.
-- 마지막 검증은 `git diff --check` 3곳 통과 및 부모 `Playground` 타깃 configure/build 통과다.
+- 부모 repo 게시 기준은 `f88b5a3` (`Integrate OpenCV script workflow and QVTK startup`)이다.
+- 문서 정리 착수 전 fetch 기준으로 부모와 네 submodule의 checked-out `HEAD`는 각각 upstream 대비 `0 0`이었다.
+- 2026-05-27 검증은 부모와 네 submodule의 `git diff --check` 통과 및 부모 `Playground` 타깃 configure/build 통과다.
 - 게시 변경은 기능 구현, 책임 경계 정리, 문서 삭제/대체를 함께 포함하므로 후속 변경도 저장소별 소유권을 유지한다.
 
 ## 완료된 구현
@@ -33,6 +35,7 @@
 ### Parent app
 - `CameraImagingController`가 `PylonScene3DAdapter`와 `PylonScene3DProfile`을 사용하도록 연결.
 - OpenCV hardcoded `/opt/opencv` 탐색 제거; optional discovery로 전환.
+- macOS/Linux 첫 session 추가 시 host 갱신 원인을 Qt first-`QOpenGLWidget` surface 전환으로 확인하고, `MainWindow` 표시 전 투명 1px OpenGL composition seed를 추가했다. macOS 첫 session 확인에서는 host 갱신이 제거되었다.
 - 완료/중복/오류 문서를 제거하고 현재 상태 문서로 교체.
 
 ## 실장치에서 확인된 사실
@@ -50,23 +53,40 @@
 - `PylonScene3DAdapter.cpp`의 buffer decode, geometry decode, scene assembly 분리 시점.
 - `GraphicsEngine::applyScene3D()`의 state transition, backend apply, chrome update 책임 분리.
 - Dynamic processing의 `create_node`/`process_image` ABI 통일 및 플랫폼별 compiler/shared-library 정책.
+- Linux에서 OpenGL composition seed 적용 후 첫 session host 갱신 제거 및 배경 artifact 유무.
 
 ## 다음 세션 작업 순서
-1. `git status --short`를 부모와 두 변경 모듈에서 각각 확인한다.
-2. 앱을 재시작하거나 카메라를 재연결한 뒤 Stereo mini `PointCloud3D`에서 RGB가 실제로 보이는지 확인한다.
-3. 흰색이 계속되면 `RangeFrame::rgb` 크기와 `PointCloudData::rgb` 크기가 frame별로 채워지는 지점을 진단한다.
-4. RGB가 보이면 `None`과 `ColorOntoDepth`를 같은 장면에서 비교하고, default/profile UX 결정 전에 결과와 FPS를 기록한다.
-5. 실장치 기준이 확정된 뒤에만 adapter 내부 분리 또는 registration UI를 진행한다.
-6. 기능 검증에 따른 후속 변경은 Camera, GraphicsEngine, 부모의 별도 커밋 경계를 유지한다.
+1. 부모와 네 모듈을 fetch한 뒤 `HEAD...origin/*` 비교로 각 submodule이 최신 commit인지 확인한다.
+2. 선행 module commit이 있으면 해당 checkout과 parent pointer를 갱신하고 부모 configure/build를 다시 통과시킨다.
+3. Linux에서 첫 session을 추가해 host 갱신 제거와 1px seed artifact 유무를 확인한다.
+4. 앱을 재시작하거나 카메라를 재연결한 뒤 Stereo mini `PointCloud3D`에서 RGB가 실제로 보이는지 확인한다.
+5. 흰색이 계속되면 `RangeFrame::rgb` 크기와 `PointCloudData::rgb` 크기가 frame별로 채워지는 지점을 진단한다.
+6. RGB가 보이면 `None`과 `ColorOntoDepth`를 같은 장면에서 비교하고, default/profile UX 결정 전에 결과와 FPS를 기록한다.
+7. 실장치 기준이 확정된 뒤에만 adapter 내부 분리 또는 registration UI를 진행한다.
+8. 기능 검증에 따른 후속 변경은 Camera, GraphicsEngine, 부모의 별도 커밋 경계를 유지한다.
 
 ## 첫 검증 명령
 ```bash
+git fetch origin
+git -C modules/Camera fetch origin
+git -C modules/GraphicsEngine fetch origin
+git -C modules/Gocator fetch origin
+git -C modules/Resources fetch origin
+git rev-list --left-right --count HEAD...origin/main
+git -C modules/Camera rev-list --left-right --count HEAD...origin/HEAD
+git -C modules/GraphicsEngine rev-list --left-right --count HEAD...origin/HEAD
+git -C modules/Gocator rev-list --left-right --count HEAD...origin/HEAD
+git -C modules/Resources rev-list --left-right --count HEAD...origin/HEAD
 git status --short
 git -C modules/Camera status --short
 git -C modules/GraphicsEngine status --short
+git -C modules/Gocator status --short
+git -C modules/Resources status --short
 git diff --check
 git -C modules/Camera diff --check
 git -C modules/GraphicsEngine diff --check
+git -C modules/Gocator diff --check
+git -C modules/Resources diff --check
 cmake -S . -B build/cmake-build-debug
 cmake --build build/cmake-build-debug --target Playground -j 8
 ```

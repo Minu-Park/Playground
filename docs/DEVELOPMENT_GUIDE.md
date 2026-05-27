@@ -20,6 +20,26 @@ git -C modules/Gocator status --short --branch
 git -C modules/Resources status --short --branch
 ```
 
+## Remote Freshness
+- Local status alone does not prove that a checkout matches the remote. Fetch each repository before comparing commits.
+- A `0 0` result means the checked-out `HEAD` matches the fetched upstream reference. Detached submodule `HEAD` is normal when the parent pins that commit.
+- All four submodules must remain at their fetched upstream tip. A non-zero behind count requires updating the checked-out module commit and parent pointer, followed by parent integration validation.
+- Run this check at work start and again before committing or publishing the parent repository.
+
+```bash
+git fetch origin
+git -C modules/Camera fetch origin
+git -C modules/GraphicsEngine fetch origin
+git -C modules/Gocator fetch origin
+git -C modules/Resources fetch origin
+
+git rev-list --left-right --count HEAD...origin/main
+git -C modules/Camera rev-list --left-right --count HEAD...origin/HEAD
+git -C modules/GraphicsEngine rev-list --left-right --count HEAD...origin/HEAD
+git -C modules/Gocator rev-list --left-right --count HEAD...origin/HEAD
+git -C modules/Resources rev-list --left-right --count HEAD...origin/HEAD
+```
+
 ## Module Checkout
 ```bash
 git submodule sync --recursive
@@ -48,6 +68,7 @@ git -C modules/Resources diff --check
 ## Current State
 - The app is an MDI workspace.
 - `MainWindow` owns device creation, global log dock wiring, MDI background painting, and shutdown ordering.
+- `MainWindow` creates a transparent one-pixel OpenGL composition seed before first show to avoid first-session insertion of the top-level window's first OpenGL child.
 - `DeviceSession` owns per-session authority, controller lifetime, device control docks, processing docks, and display sink binding.
 - `GraphicsEngine` is the session central widget and remains visualization-only.
 - Device control dock visibility must not change acquisition state.
@@ -63,6 +84,7 @@ git -C modules/Resources diff --check
 
 ## Current Priority
 - Keep Camera/Gocator lifecycle cleanup stable on window close and app quit.
+- OpenGL composition seed validation passed on macOS for first-session host refresh removal; repeat on Linux and monitor for visible seed artifacts.
 - Preserve Camera `ready()` based live-frame admission.
 - Validate Basler Stereo mini and Stereo ace hardware against the implemented color Scene3D baseline, then add IR/profile UX and any capability gaps defined in `docs/STEREO_3D_CAMERA_INTEGRATION.md`.
 - Keep module changes inside each module repo and report module git status separately.
@@ -83,7 +105,8 @@ git -C modules/Resources diff --check
 - Parent code belongs in `src`.
 - Module code belongs in `modules/<Name>`.
 - Parent build directories stay under `build/`.
-- Check each repo independently before final reporting.
+- Keep every submodule current with its fetched upstream and check each repo independently before final reporting.
+- Publish changed module commits first; publish the parent pointer only after all referenced module commits are available upstream and the parent validation passes.
 - Keep callback UI writes queued to the GUI thread.
 - Keep style changes in `modules/Resources` unless a widget needs an object-name/API change.
 - Ask before changing module ownership, callback admission policy, render visibility policy, or backpressure behavior.

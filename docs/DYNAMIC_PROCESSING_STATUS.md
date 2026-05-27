@@ -12,6 +12,7 @@
 - `DynamicLibraryLoader::createNode()`는 `create_node` 심볼을 기대하지만 `QProcessingWidget`은 `process_image`를 직접 resolve하고 별도 wrapper node를 만든다.
 - `QProcessingWidget`이 compiler 실행, scratch 파일, parameter parsing, library suffix와 ABI adapter까지 함께 소유한다.
 - 현재 compile command는 `clang++`, `-fPIC`, `.dylib`에 고정되어 Windows/Linux/macOS 공통 계약이 아니다.
+- 현재 OpenCV package discovery는 `CMP0146 OLD`에 의존하며 configure 시 deprecation warning이 발생하므로, 향후 CMake 버전 호환 경계가 닫히지 않았다.
 - UI 기능 완성과 별개로 위 ABI/플랫폼 경계는 아직 해결되지 않았다.
 
 ## 정리 방향

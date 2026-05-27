@@ -33,7 +33,7 @@ playground_require_module_cmake("Camera/C++")
 playground_require_module_cmake("Gocator/C++")
 playground_require_module_cmake("Resources")
 
-find_package(Qt6 6.4 REQUIRED COMPONENTS Widgets OpenGL Xml Concurrent)
+find_package(Qt6 6.4 REQUIRED COMPONENTS Widgets OpenGL OpenGLWidgets Xml Concurrent)
 
 add_subdirectory("${PLAYGROUND_MODULES_DIR}/GraphicsEngine" "${CMAKE_BINARY_DIR}/modules/GraphicsEngine")
 add_subdirectory("${PLAYGROUND_MODULES_DIR}/Camera/C++" "${CMAKE_BINARY_DIR}/modules/Camera")
@@ -77,6 +77,7 @@ target_link_libraries(Playground
         Resources::Resources
         Qt6::Widgets
         Qt6::OpenGL
+        Qt6::OpenGLWidgets
         Qt6::Xml
         Qt6::Concurrent
 )

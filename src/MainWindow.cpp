@@ -17,6 +17,8 @@
 #include <QPaintEvent>
 #include <QPixmap>
 #include <QFileDialog>
+#include <QOpenGLFunctions>
+#include <QOpenGLWidget>
 #include <algorithm>
 
 namespace {
@@ -48,6 +50,26 @@ private:
     QPixmap _logo;
 };
 
+class OpenGLCompositionSeed final : public QOpenGLWidget, protected QOpenGLFunctions {
+public:
+    explicit OpenGLCompositionSeed(QWidget* parent)
+        : QOpenGLWidget(parent) {
+        setAttribute(Qt::WA_TransparentForMouseEvents);
+        setFocusPolicy(Qt::NoFocus);
+        setFixedSize(1, 1);
+    }
+
+protected:
+    void initializeGL() override {
+        initializeOpenGLFunctions();
+    }
+
+    void paintGL() override {
+        glClearColor(0.0F, 0.0F, 0.0F, 0.0F);
+        glClear(GL_COLOR_BUFFER_BIT);
+    }
+};
+
 } // namespace
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
@@ -60,12 +82,22 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     _mdiArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     _mdiArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     setCentralWidget(_mdiArea);
+    createOpenGLCompositionSeed();
 
     createLogDock();
     createMenus();
 
     // Connect global logger to our log dock using QueuedConnection for thread-safety.
     connect(LogManager::instance(), &LogManager::logAdded, this, &MainWindow::appendLog, Qt::QueuedConnection);
+}
+
+void MainWindow::createOpenGLCompositionSeed() {
+    // Qt can recreate a visible top-level window when its first QOpenGLWidget
+    // arrives later. Seed compositing before MainWindow is first shown.
+    auto* seed = new OpenGLCompositionSeed(_mdiArea->viewport());
+    seed->setObjectName(QStringLiteral("OpenGLCompositionSeed"));
+    seed->move(0, 0);
+    seed->show();
 }
 
 MainWindow::~MainWindow() {

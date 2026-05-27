@@ -18,7 +18,7 @@
 
 | Class | Responsibility | Must Not Own |
 | --- | --- | --- |
-| `MainWindow` | App shell, MDI workspace, menus, global logs, `CameraSystem`, session creation/removal ordering | Frame routing, processing policy, per-device UI internals |
+| `MainWindow` | App shell, MDI workspace, menus, global logs, `CameraSystem`, startup OpenGL composition seed, session creation/removal ordering | Frame routing, processing policy, per-device UI internals |
 | `DeviceSession` | One session authority, device lifetime binding, controller lifetime, processing dock, control dock, display sink binding | Module internals, generic rendering implementation |
 | `GraphicsEngine` | Central visualization widget, 2D/3D display state, render interaction | Camera/Gocator lifecycle, processing graph, session policy |
 | `AbstractImagingController` | Common start/stop/grab-state contract | Widget layout, app shell menus |
@@ -47,7 +47,7 @@ MainWindow
 DeviceSession
   central widget: GraphicsEngine
   left dock: source control panel
-  bottom dock: Image Processing Pipeline
+  right dock: Image Processing Pipeline
   owns: device pointer binding, controller, sink
 ```
 
@@ -69,9 +69,7 @@ DeviceSession
 
 ## Naming Policy
 - Use `DeviceSession` for the authority object.
-- Use `DeviceWindow` only for legacy references or historical docs.
 - Use `Control Panel` for user-facing dock text.
-- Use `Live Viewer` only when referring to the visualization surface, not a dock.
 
 ## Current Deferrals
 - Hidden-viewer retention policy is no longer tied to a dock, but explicit clear-display semantics remain unresolved.

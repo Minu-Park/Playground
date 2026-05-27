@@ -22,7 +22,9 @@
 
 ## Work Loop
 - Start: read this file, then task-relevant docs.
-- Check parent git and touched module git separately.
+- At work start and before publishing, fetch the parent repo and every `modules/*` repo, then compare each checked-out `HEAD` with its fetched upstream.
+- Keep every submodule at its current fetched upstream tip. If upstream advances, update the submodule pointer and revalidate the parent integration before publishing.
+- Check parent git and every module git separately.
 - Keep module changes inside that module repo.
 - Keep Playground integration code in `src`.
 - Keep style/assets in `modules/Resources`; initialize styling via `Resources::installResources` in the host app.
@@ -31,6 +33,7 @@
 - Ensure cross-platform validation: avoid hardcoded OS-specific paths, fonts, or APIs without guardrails.
 - Update docs every structural turn.
 - Verify with `git diff --check` and the smallest viable configure/build.
+- Never publish a parent commit that pins an unpublished or knowingly stale module commit.
 
 ## Docs
 - `docs/NEXT_SESSION_HANDOFF.md`: active published baseline and next-session first actions, when present.

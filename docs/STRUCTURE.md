@@ -10,6 +10,8 @@
 - Each module is also an independent repository with separate history.
 - Parent commits should record host code, docs, and submodule pointers only.
 - Module implementation changes must be committed in the touched module repo first.
+- Each submodule pointer must track the latest fetched upstream commit used by the parent integration; a stale module pointer is not an accepted steady state.
+- If a module upstream advances, the parent updates that pointer only after the new module set passes integration validation.
 
 ## Layout
 | Path | Owner | Role |
@@ -27,6 +29,7 @@
 
 ## Current App
 - `src/main.cpp` installs the `GraphicsEngine` QVTK/OpenGL default surface format before `QApplication`, then initializes `LogManager`, installs shared Resources through `Resources::installResources(app)`, and launches `MainWindow`.
+- `MainWindow` owns a transparent one-pixel `QOpenGLWidget` composition seed under the MDI viewport before the host is shown; this moves first top-level OpenGL composition setup out of session addition without pre-creating a `GraphicsEngine`.
 - `MainWindow` hosts a `QMdiArea` central workspace.
 - The MDI viewport is painted by the host app with neutral gray `#eeeeee` and `:/Resources/BASLER_Logo.png`.
 - Users can add Basler Camera, LMI Gocator, or Test Image sessions as MDI subwindows.

@@ -1,7 +1,7 @@
 # Structural Review
 
 ## Scope
-- Review date: 2026-05-26.
+- Review date: 2026-05-27.
 - Scope: parent app, modified `Camera` and `GraphicsEngine` module surfaces.
 - Purpose: unclear ownership boundaries only. Current layout belongs in `STRUCTURE.md`; completed history belongs in git.
 
@@ -17,18 +17,10 @@
 | Medium | Blaze compatibility vs pylon common decoder | Blaze remains a separate adapter while Stereo paths implement new component/stride handling in the facade. | Shared safety fixes can diverge across Basler 3D families. | Consolidate common buffer validation after Blaze regression tests exist. |
 | Medium | Processing dock vs frame domain | Processing controls are hosted for sessions although Scene3D node semantics remain undefined. | UI advertises capability beyond implemented processing behavior. | Gate or label Scene3D pass-through before enabling 3D node work. |
 | Medium | Empty source vs display clearing | `GraphicsEngineSink::enqueueImage` ignores null images used when the last static image is removed. | Stale display can survive an empty session. | Add explicit clear-display semantics. |
+| Medium | OpenCV discovery vs CMake policy lifetime | Parent CMake sets `CMP0146` to `OLD` because the installed OpenCV config still probes CUDA through CMake's removed legacy module. | Configure currently succeeds with a deprecation warning, but a future CMake version may reject the fallback. | Establish a compatible OpenCV/CMake discovery path, then remove the `OLD` policy setting. |
 | Medium | Dynamic loader ABI vs compile UI | `DynamicLibraryLoader` expects `create_node`, while `QProcessingWidget` resolves `process_image` and owns a second wrapper/ABI; compile output is `clang++`/`.dylib`-fixed. | Enabled OpenCV builds expose a platform-specific path with two extension contracts. | Decide one ABI and extract platform-aware compiler/load policy from the widget. |
-| Medium | First native VTK widget vs visible host refresh | `DeviceSession` creates the first `GraphicsEngine` after the MDI host is visible. | Early QVTK surface setup removes delayed global-format mutation, but first native widget attachment can still refresh the macOS backing layer. | Validate on macOS; consider host-owned pre-creation only if the visual refresh remains. |
+| Medium | OpenGL composition seed vs startup cost | `QVTKOpenGLNativeWidget` derives from `QOpenGLWidget`, and Qt 6.4+ can recreate a visible top-level window when its first OpenGL child is inserted. First-session-only reproduction on macOS and Linux confirmed this path; `MainWindow` now creates a transparent one-pixel `QOpenGLWidget` before first show. | The seed moves surface composition setup before visible UI and resolved the first-session refresh in macOS validation, but adds one persistent GL context on every platform. | Repeat first-session verification on Linux and retain the seed only while startup/background appearance remains acceptable. |
 | Low | Runtime dependency policy vs cross-platform claim | Gocator/pylon runtime discovery and deployment handling are platform-specific. | Windows/macOS support cannot be claimed from Linux integration builds alone. | Maintain per-platform runtime verification before distribution claims. |
-
-## Resolved In This Cleanup
-- Removed duplicate `GraphicsScene3DRequest::includeColorImage`; `GraphicsScene3DContent::ColorImage` is now the single request signal.
-- Moved decoder facts out of the `Camera` class contract into `PylonScene3DProfile`; adapter no longer depends on the acquisition class.
-- Removed unused profile capability-looking fields; actual frame components remain authoritative for RGB decoding.
-- Deleted completed/redundant host walkthrough and imaging-controller plan documents.
-- Removed hardcoded `/opt/opencv` CMake discovery; OpenCV now follows optional package discovery while dynamic ABI/platform policy remains listed debt.
-- Added host opt-in `GraphicsEngine::installDefaultSurfaceFormat()` startup use while keeping direct-widget fallback.
-- Kept the active dynamic-library owner alive during `process_image` execution so a hot-swap cannot unload the executing code path.
 
 ## Repository Rule
 - Parent commits contain host code, docs, and submodule pointers.

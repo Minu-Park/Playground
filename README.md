@@ -13,6 +13,7 @@ Playground is a Qt host workspace for composing and testing the Camera, Gocator,
 - `DeviceSession` owns one imaging session authority boundary.
 - `GraphicsEngine` is the session central widget and remains visualization-only.
 - The host installs the `GraphicsEngine` QVTK/OpenGL default surface format before `QApplication`, so first session creation does not perform delayed global graphics setup.
+- `MainWindow` adds a transparent one-pixel OpenGL composition seed before its first show, so adding the first session does not introduce the top-level window's first OpenGL child on platforms affected by Qt's dynamic `QOpenGLWidget` insertion behavior.
 - Device control widgets are docked panels managed by the session.
 - `QProcessingWidget` is hosted in a hidden-by-default `Image Processing Pipeline` dock.
 - `CameraImagingController`, `GocatorImagingController`, and `StaticImageImagingController` own acquisition/session flow.
@@ -26,6 +27,7 @@ Playground is a Qt host workspace for composing and testing the Camera, Gocator,
 
 ## Modules
 The parent repo tracks the modules as git submodules, but each module keeps its own git history and must be checked, changed, committed, and pushed separately.
+Every module is kept current with its fetched upstream tip. Before parent publication, fetch and compare all module repositories, update any advanced submodule pointer, and verify the parent integration against the resulting set of module commits.
 
 | Path | Role |
 | --- | --- |

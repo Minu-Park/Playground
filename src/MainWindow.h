@@ -23,6 +23,7 @@ private slots:
 private:
     void createMenus();
     void createLogDock();
+    void createOpenGLCompositionSeed();
 
     QMdiArea* _mdiArea;
     QTextEdit* _logViewer = nullptr;
