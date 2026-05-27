@@ -2,14 +2,14 @@
 
 ## Read Order
 1. `AGENTS.md`
-2. `docs/NEXT_SESSION_HANDOFF.md` when it exists
-3. `docs/STRUCTURE.md`
+2. `docs/STRUCTURE.md`
+3. `docs/SESSION_ARCHITECTURE.md`
 4. `docs/STRUCTURAL_REVIEW.md`
 5. Task-relevant module docs
 
 ## Integration Status
-- `docs/NEXT_SESSION_HANDOFF.md`: 게시 기준 커밋, 실장치 확인 결과, 다음 세션 착수 순서.
 - `docs/STEREO_3D_CAMERA_INTEGRATION.md`: Basler Stereo mini/Stereo ace 현재 계약, 구현 결과, 남은 결정.
+- `docs/STRUCTURAL_REVIEW.md`: 처리 파이프라인 포함 현재 책임 경계 부채와 결정 대기 항목.
 
 ## Normal Checks
 ```bash
@@ -80,7 +80,7 @@ git -C modules/Resources diff --check
 - `QGocatorWidget` reports callback-confirmed grab transitions and asynchronous parameter update submissions in its local status bar.
 - `Gocator::syslog()` flushes operation records for immediate host-side redirected logging.
 - Test Image control sizing and neutral selection styling remain in `modules/Resources/Style.qss`.
-- OpenCV is optional; when CMake finds it, `HAS_OPENCV` enables the current live compilation UI. Dynamic ABI and cross-platform compiler policy remain unresolved.
+- OpenCV is optional; when CMake finds it, `HAS_OPENCV` enables the single `process_image` live compilation path. Cross-platform compiler and shared-library policy remain unresolved.
 
 ## Current Priority
 - Keep Camera/Gocator lifecycle cleanup stable on window close and app quit.
@@ -96,8 +96,8 @@ git -C modules/Resources diff --check
 2. Keep GUI-thread display enqueue in `GraphicsEngineSink`.
 3. Keep `DeviceSession` as the owner of session composition and widget layout.
 4. Keep `ProcessingPipeline` pass-through-safe before adding expensive processing.
-5. Add or load processing nodes through `ProcessingRegistry`.
-6. Re-enable dynamic library loading only with cross-platform compiler, library suffix, and unload safety.
+5. Keep the current single `process_image` hot-swap contract until a multi-node processing contract is defined.
+6. Extract compile/load policy from the widget before claiming cross-platform live compilation.
 7. Extend the pipeline UI only after the backend can represent multiple node instances.
 8. Extend 3D processing only after Scene3D admission and memory policy are explicit.
 

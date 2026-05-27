@@ -62,8 +62,6 @@ qt_add_executable(Playground
     src/Pipeline/ProcessingFrame.h
     src/Pipeline/ProcessingPipeline.h
     src/Pipeline/ProcessingPipeline.cpp
-    src/Pipeline/ProcessingRegistry.h
-    src/Pipeline/ProcessingRegistry.cpp
     src/Pipeline/DynamicLibraryLoader.h
     src/Pipeline/DynamicLibraryLoader.cpp
 )

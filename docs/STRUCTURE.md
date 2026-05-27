@@ -58,8 +58,8 @@
 - `GocatorImagingController` owns Gocator callback registration, pipeline execution, and display sink binding.
 - `StaticImageImagingController` owns file list playback, FPS timing, pipeline execution, and display sink binding.
 - `ProcessingPipeline` owns ordered processing node instances.
-- `ProcessingRegistry` owns available built-in and dynamic processing node definitions.
-- `DynamicLibraryLoader` owns dynamic library lifetime for loaded processing nodes.
+- `QProcessingWidget` owns the currently exposed single `process_image` hot-swap node.
+- `DynamicLibraryLoader` keeps the installed processing library mapped while frames can invoke it.
 
 ## Data Flow
 - Camera 2D frames convert from pylon image payloads to `QImage`, pass through `ProcessingPipeline`, then enqueue to `GraphicsEngine::setImage`.

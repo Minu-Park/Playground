@@ -1,51 +1,6 @@
 #include "Pipeline/DynamicLibraryLoader.h"
 #include <QDebug>
 
-// DynamicLibraryNode implementation
-DynamicLibraryNode::DynamicLibraryNode(std::shared_ptr<DynamicLibraryLoader> loader, ProcessingNode* rawNode)
-    : _loader(std::move(loader)), _rawNode(rawNode) {}
-
-DynamicLibraryNode::~DynamicLibraryNode() {
-    // Explicitly delete rawNode before loader shared_ptr goes out of scope.
-    // This ensures that the node object is destroyed while the library memory is still mapped.
-    _rawNode.reset();
-}
-
-QString DynamicLibraryNode::name() const {
-    if (_rawNode) {
-        return _rawNode->name();
-    }
-    return "Unknown Dynamic Node";
-}
-
-void DynamicLibraryNode::process(ProcessingFrame& frame) {
-    if (_rawNode) {
-        _rawNode->process(frame);
-    }
-}
-
-std::vector<ParameterSpec> DynamicLibraryNode::parameterSpecs() const {
-    if (_rawNode) {
-        return _rawNode->parameterSpecs();
-    }
-    return {};
-}
-
-void DynamicLibraryNode::setParameter(int index, double value) {
-    if (_rawNode) {
-        _rawNode->setParameter(index, value);
-    }
-}
-
-double DynamicLibraryNode::getParameter(int index) const {
-    if (_rawNode) {
-        return _rawNode->getParameter(index);
-    }
-    return 0.0;
-}
-
-
-// DynamicLibraryLoader implementation
 DynamicLibraryLoader::DynamicLibraryLoader(const QString& path)
     : _path(path), _library(path) {}
 
@@ -80,26 +35,4 @@ void* DynamicLibraryLoader::resolve(const char* symbol) {
         return (void*)_library.resolve(symbol);
     }
     return nullptr;
-}
-
-bool DynamicLibraryLoader::isLoaded() const {
-    std::lock_guard<std::mutex> lock(_mutex);
-    return _library.isLoaded();
-}
-
-std::shared_ptr<ProcessingNode> DynamicLibraryLoader::createNode() {
-    using CreateNodeFunc = ProcessingNode* (*)();
-    auto func = reinterpret_cast<CreateNodeFunc>(resolve("create_node"));
-    if (!func) {
-        qWarning() << "[DynamicLibraryLoader] Could not resolve 'create_node' symbol in library:" << _path;
-        return nullptr;
-    }
-    
-    ProcessingNode* rawNode = func();
-    if (!rawNode) {
-        qWarning() << "[DynamicLibraryLoader] 'create_node' returned nullptr in library:" << _path;
-        return nullptr;
-    }
-    
-    return std::make_shared<DynamicLibraryNode>(shared_from_this(), rawNode);
 }

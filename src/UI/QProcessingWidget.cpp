@@ -1,7 +1,6 @@
 #include "UI/QProcessingWidget.h"
 #include "Utility/ParameterParser.h"
 #include "Controller/AbstractImagingController.h"
-#include "Pipeline/ProcessingRegistry.h"
 #include "Pipeline/DynamicLibraryLoader.h"
 #include "Pipeline/ProcessingPipeline.h"
 #include <mutex>
@@ -436,27 +435,6 @@ public:
         if (index >= 0 && index < static_cast<int>(_paramValues.size())) {
             _paramValues[index] = value;
         }
-    }
-
-    void updateLibrary(std::shared_ptr<DynamicLibraryLoader> loader, ProcessImageFunc func) {
-        std::lock_guard<std::mutex> lock(_mutex);
-        _loader = std::move(loader);
-        _func = func;
-    }
-
-    void updateSpecs(const std::vector<ParameterSpec>& newSpecs) {
-        std::lock_guard<std::mutex> lock(_mutex);
-        _specs = newSpecs;
-
-        std::vector<double> newValues(newSpecs.size(), 0.0);
-        for (size_t i = 0; i < newSpecs.size(); ++i) {
-            if (i < _paramValues.size()) {
-                newValues[i] = _paramValues[i];
-            } else {
-                newValues[i] = newSpecs[i].defaultValue;
-            }
-        }
-        _paramValues = newValues;
     }
 
     void updateLibraryAndSpecs(std::shared_ptr<DynamicLibraryLoader> loader, ProcessImageFunc func, const std::vector<ParameterSpec>& newSpecs) {
@@ -1066,10 +1044,7 @@ void QProcessingWidget::loadDynamicNode(const QString& dylibPath) {
         return;
     }
 
-    // 3. Keep the loader alive globally
-    _dynamicLoader = loader;
-
-    // 4. Update the library and specifications in our persistent script node
+    // Keep the installed function's library mapped through the persistent node.
     if (_scriptNode) {
         std::vector<ParameterSpec> newSpecs;
         if (_codeEditor) {
@@ -1081,15 +1056,7 @@ void QProcessingWidget::loadDynamicNode(const QString& dylibPath) {
         _scriptNode->updateLibraryAndSpecs(loader, func, newSpecs);
     }
 
-    // Keep dynamic library path for tracking, but avoid removing previous file immediately.
-    // Memory mapped library file removal while in use can cause ExcBadAccess crash on macOS paging.
-    _currentDylibPath = dylibPath;
-
     qInfo() << "[Pipeline] [Success] OpenCV Filter Script active and injected.";
 
     refreshParameterUI();
-}
-
-void QProcessingWidget::resizeEvent(QResizeEvent* event) {
-    QWidget::resizeEvent(event);
 }

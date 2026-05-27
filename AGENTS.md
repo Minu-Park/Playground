@@ -36,9 +36,8 @@
 - Never publish a parent commit that pins an unpublished or knowingly stale module commit.
 
 ## Docs
-- `docs/NEXT_SESSION_HANDOFF.md`: active published baseline and next-session first actions, when present.
 - `docs/DEVELOPMENT_GUIDE.md`: priorities, commands, work checklist.
 - `docs/STRUCTURE.md`: current layout, ownership, integration flow.
 - `docs/SESSION_ARCHITECTURE.md`: class-by-class session authority and UI/lifecycle boundary.
-- `docs/DYNAMIC_PROCESSING_STATUS.md`: dynamic OpenCV C++ runtime processing status and unresolved boundary.
+- `docs/STEREO_3D_CAMERA_INTEGRATION.md`: current Stereo 3D contract and hardware validation.
 - `docs/STRUCTURAL_REVIEW.md`: current structural risks and decisions needed.

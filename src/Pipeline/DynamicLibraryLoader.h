@@ -3,34 +3,13 @@
 #include <memory>
 #include <QString>
 #include <mutex>
-#include "Pipeline/ProcessingPipeline.h"
 
-class DynamicLibraryNode : public ProcessingNode {
-public:
-    DynamicLibraryNode(std::shared_ptr<class DynamicLibraryLoader> loader, ProcessingNode* rawNode);
-    ~DynamicLibraryNode() override;
-
-    QString name() const override;
-    void process(ProcessingFrame& frame) override;
-    std::vector<ParameterSpec> parameterSpecs() const override;
-    void setParameter(int index, double value) override;
-    double getParameter(int index) const override;
-
-private:
-    std::shared_ptr<DynamicLibraryLoader> _loader;
-    std::unique_ptr<ProcessingNode> _rawNode;
-};
-
-class DynamicLibraryLoader : public std::enable_shared_from_this<DynamicLibraryLoader> {
+class DynamicLibraryLoader {
 public:
     static std::shared_ptr<DynamicLibraryLoader> load(const QString& path);
     ~DynamicLibraryLoader();
 
     void* resolve(const char* symbol);
-    bool isLoaded() const;
-    
-    // Helper to create node from this library
-    std::shared_ptr<ProcessingNode> createNode();
 
 private:
     explicit DynamicLibraryLoader(const QString& path);

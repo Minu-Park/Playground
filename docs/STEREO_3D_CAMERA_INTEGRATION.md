@@ -15,6 +15,13 @@
 - Stereo mini `RGBA8` alpha는 투명도로 쓰지 않고 RGB 바이트만 표시와 점군 색에 사용한다.
 - 점군 색 유무는 profile 문자열이 아니라 수신 frame의 실제 `RGB8/RGBA8` component로 판정한다.
 
+## 실장치 확인 기준
+- 연결 장치에서 `Stereo mini STM-501u` (`BaslerGTC/Basler/Stereo_mini`)가 확인되었다.
+- Stereo mini `Intensity`는 실제 payload에서 `RGBA8` color component로 수신되었다.
+- Component가 보고한 stride/padding과 raw buffer size 불일치가 줄 단위 깨짐의 원인이었으며, packed-stride fallback으로 방어한다.
+- `RGBA8` alpha=0 픽셀이 존재하므로 alpha를 opacity로 처리하면 흰 배경 형태의 표시 오류가 발생할 수 있다.
+- RGB 생성 gate 수정 이후 `PointCloud3D`에서 실제 색 표시 재확인은 아직 남아 있다.
+
 ## 남은 결정
 - 원본 color 해상도 보존(`None`)과 hardware registration(`ColorOntoDepth`) 중 기본 profile 정책.
 - IR/confidence/error 채널과 profile 선택 UI 범위.

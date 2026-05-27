@@ -5,15 +5,10 @@
 #include <vector>
 
 class QPushButton;
-class QSlider;
 class QLabel;
-class QTextEdit;
 class QCodeEditor;
 class AbstractImagingController;
-class ProcessingNode;
-class DynamicLibraryLoader;
 class QBoxLayout;
-class QResizeEvent;
 class QToolButton;
 class QVBoxLayout;
 class DynamicWrapperNode;
@@ -29,9 +24,6 @@ public:
 
     void setController(AbstractImagingController* controller);
 
-protected:
-    void resizeEvent(QResizeEvent* event) override;
-
 private slots:
     void handleDynamicSliderChanged();
     void handleDynamicSpinBoxChanged(double value);
@@ -42,7 +34,6 @@ private slots:
 
 private:
     void initUI();
-    void refreshAvailableNodes();
     void updatePipelineInController();
     void loadDynamicNode(const QString& dylibPath);
     QString getScratchDir() const;
@@ -74,8 +65,4 @@ private:
 
     // Script node instance
     std::shared_ptr<DynamicWrapperNode> _scriptNode;
-
-    // Loaded dynamic library loader (kept alive so library memory isn't unmapped prematurely)
-    std::shared_ptr<DynamicLibraryLoader> _dynamicLoader;
-    QString _currentDylibPath;
 };
