@@ -26,7 +26,7 @@
 | `modules/Resources` | Resources repo | Shared Qt qrc bundle, icons, app stylesheet, brand selectors |
 
 ## Current App
-- `src/main.cpp` creates `QApplication`, initializes `LogManager`, installs shared Resources through `Resources::installResources(app)`, and launches `MainWindow`.
+- `src/main.cpp` installs the `GraphicsEngine` QVTK/OpenGL default surface format before `QApplication`, then initializes `LogManager`, installs shared Resources through `Resources::installResources(app)`, and launches `MainWindow`.
 - `MainWindow` hosts a `QMdiArea` central workspace.
 - The MDI viewport is painted by the host app with neutral gray `#eeeeee` and `:/Resources/BASLER_Logo.png`.
 - Users can add Basler Camera, LMI Gocator, or Test Image sessions as MDI subwindows.
@@ -44,7 +44,7 @@
   - `QCameraWidget` for Basler Camera.
   - `QGocatorWidget` for LMI Gocator.
   - `QStaticImageControlWidget` for offline image playback.
-- `QProcessingWidget` lives in an `Image Processing Pipeline` dock, hidden by default.
+- `QProcessingWidget` lives in a right-side `Image Processing Pipeline` dock, hidden by default, and exposes one hot-swappable OpenCV script node with parsed parameters.
 - The `View` menu exposes text dock toggles for the control and processing panels.
 - Hiding a control or processing panel does not stop acquisition.
 - `GraphicsEngineSink` queues display calls to the local `GraphicsEngine`.

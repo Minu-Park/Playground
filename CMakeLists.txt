@@ -48,6 +48,8 @@ qt_add_executable(Playground
     src/UI/QProcessingWidget.cpp
     src/UI/QStaticImageControlWidget.cpp
     src/Utility/LogManager.cpp
+    src/Utility/ParameterParser.h
+    src/Utility/ParameterParser.cpp
     src/Controller/AbstractImagingController.h
     src/Controller/GraphicsEngineSink.h
     src/Controller/GraphicsEngineSink.cpp

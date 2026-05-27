@@ -1,19 +1,22 @@
 #include "UI/QProcessingWidget.h"
+#include "Utility/ParameterParser.h"
 #include "Controller/AbstractImagingController.h"
 #include "Pipeline/ProcessingRegistry.h"
 #include "Pipeline/DynamicLibraryLoader.h"
 #include "Pipeline/ProcessingPipeline.h"
+#include <mutex>
+#include <QDateTime>
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QBoxLayout>
 #include <QResizeEvent>
-#include <QListWidget>
 #include <QPushButton>
 #include <QToolButton>
-#include <QTabWidget>
+#include <QFrame>
 #include <QGroupBox>
 #include <QSlider>
+#include <QComboBox>
 #include <QLabel>
 #include <QTextEdit>
 #include <QFile>
@@ -39,9 +42,9 @@ public:
     explicit CppHighlighter(QTextDocument* parent = nullptr) : QSyntaxHighlighter(parent) {
         HighlightingRule rule;
 
-        // C++ Keywords
+        // C++ Keywords (Navy Blue)
         QTextCharFormat keywordFormat;
-        keywordFormat.setForeground(QColor(QStringLiteral("#569CD6")));
+        keywordFormat.setForeground(QColor(QStringLiteral("#00457C")));
         keywordFormat.setFontWeight(QFont::Bold);
         QStringList keywordPatterns;
         keywordPatterns << QStringLiteral("\\bchar\\b") << QStringLiteral("\\bclass\\b") << QStringLiteral("\\bconst\\b")
@@ -56,31 +59,31 @@ public:
             _rules.push_back(rule);
         }
 
-        // OpenCV Keywords (cv::Mat, cv::Canny, etc.)
+        // OpenCV Keywords (Teal Green)
         QTextCharFormat cvFormat;
-        cvFormat.setForeground(QColor(QStringLiteral("#4EC9B0")));
+        cvFormat.setForeground(QColor(QStringLiteral("#007A87")));
         cvFormat.setFontWeight(QFont::Bold);
         rule.pattern = QRegularExpression(QStringLiteral("\\bcv::\\w+\\b"));
         rule.format = cvFormat;
         _rules.push_back(rule);
 
-        // String Literals
+        // String Literals (Warm Amber)
         QTextCharFormat stringFormat;
-        stringFormat.setForeground(QColor(QStringLiteral("#D69D85")));
+        stringFormat.setForeground(QColor(QStringLiteral("#B25900")));
         rule.pattern = QRegularExpression(QStringLiteral("\".*\""));
         rule.format = stringFormat;
         _rules.push_back(rule);
 
-        // Numbers
+        // Numbers (Crimson)
         QTextCharFormat numberFormat;
-        numberFormat.setForeground(QColor(QStringLiteral("#B5CEA8")));
+        numberFormat.setForeground(QColor(QStringLiteral("#B02A37")));
         rule.pattern = QRegularExpression(QStringLiteral("\\b\\d+(\\.\\d+)?\\b"));
         rule.format = numberFormat;
         _rules.push_back(rule);
 
-        // Single Line Comments
+        // Single Line Comments (Muted Slate Grey)
         QTextCharFormat commentFormat;
-        commentFormat.setForeground(QColor(QStringLiteral("#6A9955")));
+        commentFormat.setForeground(QColor(QStringLiteral("#64748B")));
         rule.pattern = QRegularExpression(QStringLiteral("//[^\n]*"));
         rule.format = commentFormat;
         _rules.push_back(rule);
@@ -96,7 +99,7 @@ protected:
             }
         }
 
-        // Multi-line comments /* */
+        // Multi-line comments /* */ (Muted Slate Grey)
         setCurrentBlockState(0);
         int startIndex = 0;
         if (previousBlockState() != 1) {
@@ -104,7 +107,7 @@ protected:
         }
 
         QTextCharFormat multiLineCommentFormat;
-        multiLineCommentFormat.setForeground(QColor(QStringLiteral("#6A9955")));
+        multiLineCommentFormat.setForeground(QColor(QStringLiteral("#64748B")));
 
         while (startIndex >= 0) {
             QRegularExpressionMatch match = QRegularExpression(QStringLiteral("\\*/")).match(text, startIndex);
@@ -236,7 +239,8 @@ public:
                     << QStringLiteral("isContinuous()")
                     << QStringLiteral("elemSize()");
 
-        _completer = new QCompleter(_defaultWords, this);
+        _combinedWords = _defaultWords;
+        _completer = new QCompleter(_combinedWords, this);
         _completer->setWidget(this);
         _completer->setCompletionMode(QCompleter::PopupCompletion);
         _completer->setCaseSensitivity(Qt::CaseInsensitive);
@@ -310,8 +314,8 @@ protected:
             // Restore default OpenCV word list
             QStringListModel* model = qobject_cast<QStringListModel*>(_completer->model());
             if (model) {
-                if (model->stringList() != _defaultWords) {
-                    model->setStringList(_defaultWords);
+                if (model->stringList() != _combinedWords) {
+                    model->setStringList(_combinedWords);
                 }
             }
 
@@ -350,6 +354,21 @@ protected:
         QTextEdit::focusInEvent(e);
     }
 
+public:
+    void setCustomWords(const QStringList& words) {
+        _customWords = words;
+        _combinedWords = _defaultWords + _customWords;
+        _combinedWords.removeDuplicates();
+        _combinedWords.sort();
+
+        if (_completer) {
+            QStringListModel* model = qobject_cast<QStringListModel*>(_completer->model());
+            if (model) {
+                model->setStringList(_combinedWords);
+            }
+        }
+    }
+
 private:
     void insertCompletion(const QString& completion) {
         if (_completer->widget() != this) {
@@ -380,13 +399,128 @@ private:
     QCompleter* _completer = nullptr;
     CppHighlighter* _highlighter = nullptr;
     QStringList _defaultWords;
+    QStringList _customWords;
+    QStringList _combinedWords;
     QStringList _matMembers;
+};
+
+using ProcessImageFunc = void (*)(unsigned char*, int, int, int, int, const double*, int);
+
+class DynamicWrapperNode : public ProcessingNode {
+public:
+    DynamicWrapperNode() {
+        _specs = {
+            { QStringLiteral("Parameter 1"), 1.0, 100.0, 5.0, 0 },
+            { QStringLiteral("Parameter 2"), 1.0, 250.0, 50.0, 0 }
+        };
+        _paramValues = { 5.0, 50.0 };
+    }
+
+    QString name() const override { return QStringLiteral("OpenCV Filter Script"); }
+
+    std::vector<ParameterSpec> parameterSpecs() const override {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _specs;
+    }
+
+    double getParameter(int index) const override {
+        std::lock_guard<std::mutex> lock(_mutex);
+        if (index >= 0 && index < static_cast<int>(_paramValues.size())) {
+            return _paramValues[index];
+        }
+        return 0.0;
+    }
+
+    void setParameter(int index, double value) override {
+        std::lock_guard<std::mutex> lock(_mutex);
+        if (index >= 0 && index < static_cast<int>(_paramValues.size())) {
+            _paramValues[index] = value;
+        }
+    }
+
+    void updateLibrary(std::shared_ptr<DynamicLibraryLoader> loader, ProcessImageFunc func) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _loader = std::move(loader);
+        _func = func;
+    }
+
+    void updateSpecs(const std::vector<ParameterSpec>& newSpecs) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _specs = newSpecs;
+
+        std::vector<double> newValues(newSpecs.size(), 0.0);
+        for (size_t i = 0; i < newSpecs.size(); ++i) {
+            if (i < _paramValues.size()) {
+                newValues[i] = _paramValues[i];
+            } else {
+                newValues[i] = newSpecs[i].defaultValue;
+            }
+        }
+        _paramValues = newValues;
+    }
+
+    void updateLibraryAndSpecs(std::shared_ptr<DynamicLibraryLoader> loader, ProcessImageFunc func, const std::vector<ParameterSpec>& newSpecs) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _loader = std::move(loader);
+        _func = func;
+        _specs = newSpecs;
+
+        std::vector<double> newValues(newSpecs.size(), 0.0);
+        for (size_t i = 0; i < newSpecs.size(); ++i) {
+            if (i < _paramValues.size()) {
+                newValues[i] = _paramValues[i];
+            } else {
+                newValues[i] = newSpecs[i].defaultValue;
+            }
+        }
+        _paramValues = newValues;
+    }
+
+    void process(ProcessingFrame& frame) override {
+        ProcessImageFunc activeFunc = nullptr;
+        std::shared_ptr<DynamicLibraryLoader> activeLoader;
+        std::vector<double> values;
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            activeFunc = _func;
+            activeLoader = _loader;
+            values = _paramValues;
+        }
+
+        if (!activeFunc) return; // Pass-through if not compiled
+
+        if (std::holds_alternative<QImage>(frame.payload)) {
+            QImage& img = std::get<QImage>(frame.payload);
+            if (img.isNull()) return;
+
+            // Deep copy if shared, to guarantee thread-safe in-place modification
+            img.detach();
+
+            int channels = 1;
+            if (img.format() == QImage::Format_RGB32 || img.format() == QImage::Format_ARGB32) {
+                channels = 4;
+            } else if (img.format() == QImage::Format_RGB888 || img.format() == QImage::Format_BGR888) {
+                channels = 3;
+            }
+
+            activeFunc(img.bits(), img.width(), img.height(), channels, img.bytesPerLine(), values.data(), static_cast<int>(values.size()));
+        }
+    }
+
+private:
+    std::shared_ptr<DynamicLibraryLoader> _loader;
+    ProcessImageFunc _func = nullptr;
+    std::vector<ParameterSpec> _specs;
+    std::vector<double> _paramValues;
+    mutable std::mutex _mutex;
 };
 
 QProcessingWidget::QProcessingWidget(QWidget* parent)
     : QWidget(parent) {
+    _scriptNode = std::make_shared<DynamicWrapperNode>();
+    _scriptNode->setEnabled(true);
     initUI();
-    refreshAvailableNodes();
+    refreshParameterUI();
 }
 
 QProcessingWidget::~QProcessingWidget() {
@@ -394,6 +528,14 @@ QProcessingWidget::~QProcessingWidget() {
         _compiler->kill();
         _compiler->waitForFinished();
     }
+}
+
+QSize QProcessingWidget::sizeHint() const {
+    return QSize(450, 600); // Generous default width and height for code editing and sliders
+}
+
+QSize QProcessingWidget::minimumSizeHint() const {
+    return QSize(380, 480); // Ensure minimum usable space for layout
 }
 
 void QProcessingWidget::setController(AbstractImagingController* controller) {
@@ -404,145 +546,103 @@ void QProcessingWidget::setController(AbstractImagingController* controller) {
 }
 
 void QProcessingWidget::initUI() {
+    // Clean up any left-over temporary dynamic library files safely during initialization
+    QString scratchDir = getScratchDir();
+    QDir dir(scratchDir);
+    if (dir.exists()) {
+        QStringList filters;
+        filters << QStringLiteral("*.dylib") << QStringLiteral("*.so") << QStringLiteral("*.dll");
+        QFileInfoList fileList = dir.entryInfoList(filters, QDir::Files);
+        for (const QFileInfo& fileInfo : fileList) {
+            QFile::remove(fileInfo.absoluteFilePath());
+        }
+    }
+
     _mainLayout = new QVBoxLayout(this);
-    _mainLayout->setContentsMargins(4, 4, 4, 4);
+    _mainLayout->setContentsMargins(8, 8, 8, 8);
+    _mainLayout->setSpacing(8);
 
-    _tabWidget = new QTabWidget(this);
-    _mainLayout->addWidget(_tabWidget);
-
-    // ==========================================
-    // TAB 1: Pipeline & Parameters
-    // ==========================================
-    auto* pipelineTab = new QWidget(this);
-    auto* pipelineLayout = new QVBoxLayout(pipelineTab);
-    pipelineLayout->setContentsMargins(8, 8, 8, 8);
-    pipelineLayout->setSpacing(8);
-
-    auto* listsLayout = new QVBoxLayout();
-    listsLayout->setSpacing(4);
-
-    auto* availLabel = new QLabel(QStringLiteral("Available Filters:"), this);
-    availLabel->setStyleSheet(QStringLiteral("font-weight: 600; color: #354657;"));
-    _availableList = new QListWidget(this);
-    _availableList->setMinimumHeight(100);
-
-    auto* pipelineLabel = new QLabel(QStringLiteral("Active Pipeline (Check to enable):"), this);
-    pipelineLabel->setStyleSheet(QStringLiteral("font-weight: 600; color: #354657;"));
-    _pipelineList = new QListWidget(this);
-    _pipelineList->setMinimumHeight(120);
-
-    // Connect list widget change to update controller
-    connect(_pipelineList, &QListWidget::itemChanged, this, &QProcessingWidget::handleNodeItemChanged);
-    connect(_pipelineList, &QListWidget::itemSelectionChanged, this, &QProcessingWidget::handlePipelineSelectionChanged);
-
-    // Compact toolbar for list operations (using icons)
-    auto* btnLayout = new QHBoxLayout();
-    btnLayout->setSpacing(6);
-    btnLayout->setContentsMargins(0, 4, 0, 4);
-
-    _addButton = new QToolButton(this);
-    _addButton->setIcon(QIcon(QStringLiteral(":/Resources/Icons/icons8-add-image-48.png")));
-    _addButton->setIconSize(QSize(16, 16));
-    _addButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-    _addButton->setText(QStringLiteral("Add"));
-    _addButton->setToolTip(QStringLiteral("Add selected filter to active pipeline"));
-    _addButton->setStyleSheet(QStringLiteral(
-        "QToolButton {"
-        "  font-weight: bold;"
-        "  border: 1px solid #cfd9e4;"
-        "  border-radius: 8px;"
-        "  padding: 4px 10px;"
-        "  background: #ffffff;"
-        "}"
-        "QToolButton:hover {"
-        "  background-color: #f3f3f3;"
-        "  border-color: #b7c7d8;"
+    // 1. Header Frame (Title + Bypass/Active Toggle Button)
+    QFrame* headerFrame = new QFrame(this);
+    headerFrame->setObjectName(QStringLiteral("headerFrame"));
+    headerFrame->setStyleSheet(QStringLiteral(
+        "QFrame#headerFrame {"
+        "  background: transparent;"
+        "  border-bottom: 1px solid #d9e1ea;"
+        "  padding-bottom: 6px;"
         "}"
     ));
+    QHBoxLayout* headerLayout = new QHBoxLayout(headerFrame);
+    headerLayout->setContentsMargins(4, 0, 4, 4);
 
-    _removeButton = new QToolButton(this);
-    _removeButton->setIcon(QIcon(QStringLiteral(":/Resources/Icons/icons8-delete-48.png")));
-    _removeButton->setIconSize(QSize(16, 16));
-    _removeButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-    _removeButton->setText(QStringLiteral("Remove"));
-    _removeButton->setToolTip(QStringLiteral("Remove selected filter from pipeline"));
-    _removeButton->setStyleSheet(QStringLiteral(
-        "QToolButton {"
-        "  font-weight: bold;"
-        "  border: 1px solid #cfd9e4;"
-        "  border-radius: 8px;"
-        "  padding: 4px 10px;"
-        "  background: #ffffff;"
-        "}"
-        "QToolButton:hover {"
-        "  background-color: #fef0f0;"
-        "  border-color: #fecbcb;"
-        "  color: #c62828;"
-        "}"
+    QLabel* titleLabel = new QLabel(QStringLiteral("OpenCV Filter Script"), headerFrame);
+    titleLabel->setStyleSheet(QStringLiteral(
+        "font-weight: bold;"
+        "font-size: 13px;"
+        "color: #354657;"
     ));
+    headerLayout->addWidget(titleLabel);
+    headerLayout->addStretch(1);
 
-    _moveUpButton = new QToolButton(this);
-    _moveUpButton->setIcon(QIcon(QStringLiteral(":/Resources/Icons/icons8-chevron-up-48.png")));
-    _moveUpButton->setIconSize(QSize(16, 16));
-    _moveUpButton->setToolTip(QStringLiteral("Move selected filter up"));
-    _moveUpButton->setStyleSheet(QStringLiteral(
-        "QToolButton {"
-        "  border: 1px solid #cfd9e4;"
-        "  border-radius: 8px;"
-        "  padding: 4px;"
-        "  background: #ffffff;"
-        "}"
-        "QToolButton:hover {"
-        "  background-color: #f3f3f3;"
-        "  border-color: #b7c7d8;"
-        "}"
-    ));
+    _enableToggleBtn = new QToolButton(headerFrame);
+    _enableToggleBtn->setCheckable(true);
+    _enableToggleBtn->setChecked(_scriptNode->isEnabled());
 
-    _moveDownButton = new QToolButton(this);
-    _moveDownButton->setIcon(QIcon(QStringLiteral(":/Resources/Icons/icons8-chevron-down-48.png")));
-    _moveDownButton->setIconSize(QSize(16, 16));
-    _moveDownButton->setToolTip(QStringLiteral("Move selected filter down"));
-    _moveDownButton->setStyleSheet(QStringLiteral(
-        "QToolButton {"
-        "  border: 1px solid #cfd9e4;"
-        "  border-radius: 8px;"
-        "  padding: 4px;"
-        "  background: #ffffff;"
-        "}"
-        "QToolButton:hover {"
-        "  background-color: #f3f3f3;"
-        "  border-color: #b7c7d8;"
-        "}"
-    ));
+    auto updateToggleStyle = [this](bool checked) {
+        if (checked) {
+            _enableToggleBtn->setText(QStringLiteral("Active"));
+            _enableToggleBtn->setStyleSheet(QStringLiteral(
+                "QToolButton {"
+                "  border: 1px solid #354657;"
+                "  border-radius: 11px;"
+                "  padding: 2px 10px;"
+                "  background-color: #f1f5f9;"
+                "  color: #354657;"
+                "  font-weight: bold;"
+                "  font-size: 11px;"
+                "  min-height: 16px;"
+                "  max-height: 16px;"
+                "}"
+            ));
+        } else {
+            _enableToggleBtn->setText(QStringLiteral("Bypass"));
+            _enableToggleBtn->setStyleSheet(QStringLiteral(
+                "QToolButton {"
+                "  border: 1px solid #cfd9e4;"
+                "  border-radius: 11px;"
+                "  padding: 2px 10px;"
+                "  background-color: #ffffff;"
+                "  color: #64748b;"
+                "  font-weight: bold;"
+                "  font-size: 11px;"
+                "  min-height: 16px;"
+                "  max-height: 16px;"
+                "}"
+            ));
+        }
+    };
 
-    btnLayout->addWidget(_addButton);
-    btnLayout->addWidget(_removeButton);
-    btnLayout->addStretch(1);
-    btnLayout->addWidget(_moveUpButton);
-    btnLayout->addWidget(_moveDownButton);
+    updateToggleStyle(_enableToggleBtn->isChecked());
 
-    connect(_addButton, &QToolButton::clicked, this, &QProcessingWidget::handleAddNode);
-    connect(_removeButton, &QToolButton::clicked, this, &QProcessingWidget::handleRemoveNode);
-    connect(_moveUpButton, &QToolButton::clicked, this, &QProcessingWidget::handleMoveUp);
-    connect(_moveDownButton, &QToolButton::clicked, this, &QProcessingWidget::handleMoveDown);
+    connect(_enableToggleBtn, &QToolButton::toggled, this, [this, updateToggleStyle](bool checked) {
+        if (_scriptNode) {
+            _scriptNode->setEnabled(checked);
+        }
+        updateToggleStyle(checked);
+    });
 
-    listsLayout->addWidget(availLabel);
-    listsLayout->addWidget(_availableList, 1);
-    listsLayout->addLayout(btnLayout);
-    listsLayout->addWidget(pipelineLabel);
-    listsLayout->addWidget(_pipelineList, 2);
+    headerLayout->addWidget(_enableToggleBtn);
+    _mainLayout->addWidget(headerFrame);
 
-    pipelineLayout->addLayout(listsLayout, 3);
-
-    // Styled Parameter Editor Group
-    auto* paramGroup = new QGroupBox(QStringLiteral("Selected Node Parameters"), this);
+    // 2. Filter Parameters Group Box
+    auto* paramGroup = new QGroupBox(QStringLiteral("Filter Parameters"), this);
     paramGroup->setStyleSheet(QStringLiteral(
         "QGroupBox {"
         "  font-weight: bold;"
         "  color: #354657;"
         "  border: 1px solid #d9e1ea;"
         "  border-radius: 10px;"
-        "  margin-top: 12px;"
+        "  margin-top: 0px;"
         "  padding: 10px;"
         "  background-color: #ffffff;"
         "}"
@@ -556,57 +656,65 @@ void QProcessingWidget::initUI() {
     _paramLayout->setContentsMargins(8, 14, 8, 8);
     _paramLayout->setSpacing(8);
 
-    _selectedNodeLabel = new QLabel(QStringLiteral("Selected Node: None"), this);
-    _selectedNodeLabel->setStyleSheet(QStringLiteral("font-weight: bold; font-size: 13px; color: #00457C;"));
-    _paramLayout->addWidget(_selectedNodeLabel);
+    _mainLayout->addWidget(paramGroup); // Added vertically
 
+    // 3. Editor Title & Editor
+#ifdef HAS_OPENCV
+    QHBoxLayout* editorHeaderLayout = new QHBoxLayout();
+    editorHeaderLayout->setContentsMargins(0, 0, 0, 0);
 
-    pipelineLayout->addWidget(paramGroup, 2);
-    _tabWidget->addTab(pipelineTab, QIcon(QStringLiteral(":/Resources/Icons/icons8-setting-48.png")), QStringLiteral("Pipeline & Control"));
+    QLabel* editorTitle = new QLabel(QStringLiteral("Script Code (C++20):"), this);
+    editorTitle->setStyleSheet(QStringLiteral("font-weight: 600; color: #4a5a6a;"));
+    editorHeaderLayout->addWidget(editorTitle);
+    editorHeaderLayout->addStretch(1);
 
-    // ==========================================
-    // TAB 2: Dynamic Compiler (OpenCV)
-    // ==========================================
-    auto* compilerTab = new QWidget(this);
-    auto* compilerLayout = new QVBoxLayout(compilerTab);
-    compilerLayout->setContentsMargins(8, 8, 8, 8);
-    compilerLayout->setSpacing(8);
+    _compileButton = new QPushButton(QStringLiteral("Compile & Apply Hot-Swap"), this);
+    _compileButton->setIcon(QIcon(QStringLiteral(":/Resources/Icons/icons8-refresh-48.png")));
+    _compileButton->setStyleSheet(
+        "QPushButton {"
+        "  background-color: #ffffff;"
+        "  color: #16202b;"
+        "  border: 1px solid #cfd9e4;"
+        "  font-weight: bold;"
+        "  border-radius: 8px;"
+        "  padding: 4px 10px;"
+        "  min-height: 22px;"
+        "  max-height: 22px;"
+        "}"
+        "QPushButton:hover {"
+        "  background-color: #f8fafc;"
+        "  border-color: #b8c6d5;"
+        "}"
+        "QPushButton:pressed {"
+        "  background-color: #f1f5f9;"
+        "  border-color: #9fb7cf;"
+        "}"
+        "QPushButton:disabled {"
+        "  background-color: #f7f7f7;"
+        "  border-color: #d6dee7;"
+        "  color: #97a6b4;"
+        "}"
+    );
+    connect(_compileButton, &QPushButton::clicked, this, &QProcessingWidget::handleCompile);
+    editorHeaderLayout->addWidget(_compileButton);
+    _mainLayout->addLayout(editorHeaderLayout);
 
     QFont monoFont(QStringLiteral("Courier New"), 12);
     monoFont.setStyleHint(QFont::Monospace);
 
-    auto* logTitle = new QLabel(QStringLiteral("Compilation & Load Console:"), this);
-    logTitle->setStyleSheet(QStringLiteral("font-weight: 600; color: #354657;"));
-    _logConsole = new QTextEdit(this);
-    _logConsole->setReadOnly(true);
-    _logConsole->setFont(monoFont);
-    _logConsole->setMinimumHeight(100);
-    _logConsole->setStyleSheet(QStringLiteral("QTextEdit { background-color: #121212; color: #00ff00; border: 1px solid #333333; border-radius: 8px; padding: 6px; }"));
-    _logConsole->append(QStringLiteral("[System] Pipeline console ready."));
-
-#ifndef HAS_OPENCV
-    auto* noOpenCVLabel = new QLabel(
-        QStringLiteral("OpenCV is not enabled. C++ live compilation is disabled.\n"
-                       "Using built-in processing registry."), this);
-    noOpenCVLabel->setStyleSheet(QStringLiteral("color: #cc6600; font-weight: bold; font-size: 12px; padding: 12px; border: 1px dashed #cc6600; border-radius: 8px;"));
-    noOpenCVLabel->setAlignment(Qt::AlignCenter);
-    compilerLayout->addWidget(noOpenCVLabel, 1);
-    compilerLayout->addWidget(logTitle);
-    compilerLayout->addWidget(_logConsole, 0);
-#else
-    auto* editorTitle = new QLabel(QStringLiteral("Dynamic C++ OpenCV Filter Code (C++20):"), this);
-    editorTitle->setStyleSheet(QStringLiteral("font-weight: 600; color: #354657;"));
     _codeEditor = new QCodeEditor(this);
     _codeEditor->setFont(monoFont);
     _codeEditor->setMinimumHeight(150);
-    _codeEditor->setStyleSheet(QStringLiteral("QTextEdit { background-color: #1e1e1e; color: #d4d4d4; border: 1px solid #3c3c3c; border-radius: 8px; padding: 6px; }"));
+    _codeEditor->setStyleSheet(QStringLiteral("QTextEdit { background-color: #ffffff; color: #1e293b; border: 1px solid #cfd9e4; border-radius: 8px; padding: 6px; }"));
 
-    // Prepopulate with script-style template code (boilerplate is hidden)
+    // Prepopulate with script-style template code
     QString templateCode =
+        "// Define parameters (auto-parsed to build UI sliders):\n"
+        "// @param: kSize, name=\"Kernel Size\", min=1, max=21, default=5\n"
+        "// @param: lowThresh, name=\"Canny Low\", min=10, max=150, default=50\n"
+        "//\n"
         "// Available variables:\n"
         "//   cv::Mat img       - The raw image to process (BGRA, BGR, or Grayscale)\n"
-        "//   double param1     - Value from slider/parameter 1\n"
-        "//   double param2     - Value from slider/parameter 2\n"
         "//   int width, height - Dimensions of the image\n"
         "//   int channels      - Number of channels (4 for BGRA, 3 for BGR, 1 for Mono)\n"
         "//\n"
@@ -619,11 +727,11 @@ void QProcessingWidget::initUI() {
         "} else {\n"
         "    gray = img;\n"
         "}\n\n"
-        "// Apply Gaussian blur (param1 controls kernel size)\n"
-        "int kernelSize = std::max(1, (int(param1) % 2 == 0) ? int(param1) + 1 : int(param1));\n"
+        "// Apply Gaussian blur (kSize is dynamically available)\n"
+        "int kernelSize = std::max(1, (int(kSize) % 2 == 0) ? int(kSize) + 1 : int(kSize));\n"
         "cv::GaussianBlur(gray, blurred, cv::Size(kernelSize, kernelSize), 0);\n\n"
-        "// Apply Canny edge detection (param2 controls threshold)\n"
-        "cv::Canny(blurred, edges, param2, param2 * 3);\n\n"
+        "// Apply Canny edge detection (lowThresh is dynamically available)\n"
+        "cv::Canny(blurred, edges, lowThresh, lowThresh * 3);\n\n"
         "// Convert edges result back to target channels in 'img'\n"
         "if (channels == 4) {\n"
         "    cv::cvtColor(edges, img, cv::COLOR_GRAY2BGRA);\n"
@@ -633,122 +741,32 @@ void QProcessingWidget::initUI() {
         "    edges.copyTo(img);\n"
         "}\n";
     _codeEditor->setPlainText(templateCode);
+    _mainLayout->addWidget(_codeEditor, 1);
 
-    _compileButton = new QPushButton(QStringLiteral("Compile & Apply Hot-Swap"), this);
-    _compileButton->setIcon(QIcon(QStringLiteral(":/Resources/Icons/icons8-refresh-48.png")));
-    _compileButton->setStyleSheet(
-        "QPushButton {"
-        "  background-color: #00457C;"
-        "  color: white;"
-        "  font-weight: bold;"
-        "  border-radius: 8px;"
-        "  padding: 6px 12px;"
-        "  min-height: 28px;"
-        "  max-height: 28px;"
-        "}"
-        "QPushButton:hover {"
-        "  background-color: #005A9E;"
-        "}"
-        "QPushButton:pressed {"
-        "  background-color: #00335C;"
-        "}"
-        "QPushButton:disabled {"
-        "  background-color: #cccccc;"
-        "  color: #666666;"
-        "}"
-    );
+    // Dynamic autocomplete update based on custom parameter names
+    connect(_codeEditor, &QTextEdit::textChanged, this, [this]() {
+        auto parsed = ParameterParser::parseCode(_codeEditor->toPlainText());
+        QStringList customWords;
+        for (const auto& p : parsed) {
+            if (!p.varName.isEmpty()) {
+                customWords << p.varName;
+            }
+        }
+        _codeEditor->setCustomWords(customWords);
+    });
 
-    connect(_compileButton, &QPushButton::clicked, this, &QProcessingWidget::handleCompile);
-
-    compilerLayout->addWidget(editorTitle);
-    compilerLayout->addWidget(_codeEditor, 3);
-    compilerLayout->addWidget(_compileButton);
-    compilerLayout->addWidget(logTitle);
-    compilerLayout->addWidget(_logConsole, 1);
+    // Parse once initially
+    emit _codeEditor->textChanged();
+#else
+    auto* noOpenCVLabel = new QLabel(
+        QStringLiteral("OpenCV is not enabled. C++ live compilation is disabled."), this);
+    noOpenCVLabel->setStyleSheet(QStringLiteral("color: #cc6600; font-weight: bold; font-size: 12px; padding: 12px; border: 1px dashed #cc6600; border-radius: 8px;"));
+    noOpenCVLabel->setAlignment(Qt::AlignCenter);
+    _mainLayout->addWidget(noOpenCVLabel, 1);
 #endif
-
-    _tabWidget->addTab(compilerTab, QIcon(QStringLiteral(":/Resources/Icons/icons8-edit-48.png")), QStringLiteral("C++ Scripting"));
-
-    handlePipelineSelectionChanged(); // Initial refresh of slider state
 }
 
-void QProcessingWidget::refreshAvailableNodes() {
-    if (!_availableList) return;
-    _availableList->clear();
-    auto list = ProcessingRegistry::instance().availableNodes();
-    for (const auto& def : list) {
-        auto* item = new QListWidgetItem(_availableList);
-        item->setText(QStringLiteral("%1 (%2)").arg(def.displayName, def.id));
-        item->setData(Qt::UserRole, def.id);
-    }
-}
-
-void QProcessingWidget::handleAddNode() {
-    auto* item = _availableList->currentItem();
-    if (!item) return;
-
-    QString id = item->data(Qt::UserRole).toString();
-    auto node = ProcessingRegistry::instance().createNode(id);
-    if (node) {
-        _activeNodes.push_back(node);
-
-        auto* pipeItem = new QListWidgetItem(_pipelineList);
-        pipeItem->setText(node->name());
-        pipeItem->setFlags(pipeItem->flags() | Qt::ItemIsUserCheckable);
-        pipeItem->setCheckState(Qt::Checked);
-
-        updatePipelineInController();
-    }
-}
-
-void QProcessingWidget::handleRemoveNode() {
-    int index = _pipelineList->currentRow();
-    if (index < 0 || index >= (int)_activeNodes.size()) return;
-
-    _activeNodes.erase(_activeNodes.begin() + index);
-    delete _pipelineList->takeItem(index);
-
-    updatePipelineInController();
-    handlePipelineSelectionChanged();
-}
-
-void QProcessingWidget::handleMoveUp() {
-    int index = _pipelineList->currentRow();
-    if (index <= 0 || index >= (int)_activeNodes.size()) return;
-
-    std::swap(_activeNodes[index], _activeNodes[index - 1]);
-
-    auto* item = _pipelineList->takeItem(index);
-    _pipelineList->insertItem(index - 1, item);
-    _pipelineList->setCurrentRow(index - 1);
-
-    updatePipelineInController();
-}
-
-void QProcessingWidget::handleMoveDown() {
-    int index = _pipelineList->currentRow();
-    if (index < 0 || index >= (int)_activeNodes.size() - 1) return;
-
-    std::swap(_activeNodes[index], _activeNodes[index + 1]);
-
-    auto* item = _pipelineList->takeItem(index);
-    _pipelineList->insertItem(index + 1, item);
-    _pipelineList->setCurrentRow(index + 1);
-
-    updatePipelineInController();
-}
-
-void QProcessingWidget::handleNodeItemChanged(QListWidgetItem* item) {
-    int index = _pipelineList->row(item);
-    if (index < 0 || index >= (int)_activeNodes.size()) return;
-
-    bool isChecked = (item->checkState() == Qt::Checked);
-    _activeNodes[index]->setEnabled(isChecked);
-
-    updatePipelineInController();
-}
-
-void QProcessingWidget::handlePipelineSelectionChanged() {
+void QProcessingWidget::refreshParameterUI() {
     // 1. Clear existing dynamic controls
     for (auto& ctrl : _dynamicControls) {
         if (ctrl.controlWidget) {
@@ -763,19 +781,32 @@ void QProcessingWidget::handlePipelineSelectionChanged() {
     }
     _dynamicControls.clear();
 
-    int index = _pipelineList->currentRow();
-    if (index < 0 || index >= (int)_activeNodes.size()) {
-        _selectedNodeLabel->setText(QStringLiteral("Selected Node: None"));
-        return;
+    // Recursively clear layout items to prevent memory leaks and overlapping items
+    if (_paramLayout) {
+        QLayoutItem* child;
+        while ((child = _paramLayout->takeAt(0)) != nullptr) {
+            if (child->layout()) {
+                QLayout* subLayout = child->layout();
+                QLayoutItem* subChild;
+                while ((subChild = subLayout->takeAt(0)) != nullptr) {
+                    if (subChild->widget()) {
+                        subChild->widget()->deleteLater();
+                    }
+                    delete subChild;
+                }
+            } else if (child->widget()) {
+                child->widget()->deleteLater();
+            }
+            delete child;
+        }
     }
 
-    auto& node = _activeNodes[index];
-    _selectedNodeLabel->setText(QStringLiteral("Selected Node: %1").arg(node->name()));
+    if (!_scriptNode) return;
 
     // 2. Fetch parameters specs from the node
-    auto specs = node->parameterSpecs();
+    auto specs = _scriptNode->parameterSpecs();
     if (specs.empty()) {
-        auto* noParamLabel = new QLabel(QStringLiteral("No adjustable parameters for this node."), this);
+        auto* noParamLabel = new QLabel(QStringLiteral("No adjustable parameters for this script."), this);
         noParamLabel->setStyleSheet(QStringLiteral("color: #777777; font-style: italic; padding: 4px;"));
         _paramLayout->addWidget(noParamLabel);
 
@@ -789,13 +820,13 @@ void QProcessingWidget::handlePipelineSelectionChanged() {
     // 3. Rebuild controls
     for (size_t i = 0; i < specs.size(); ++i) {
         const auto& spec = specs[i];
-        double currentVal = node->getParameter(static_cast<int>(i));
+        double currentVal = _scriptNode->getParameter(static_cast<int>(i));
 
         auto* headerLayout = new QHBoxLayout();
         auto* nameLbl = new QLabel(spec.name, this);
         nameLbl->setStyleSheet(QStringLiteral("color: #4a5a6a; font-weight: 600;"));
         auto* valLbl = new QLabel(QString::number(currentVal, 'f', spec.decimals), this);
-        valLbl->setStyleSheet(QStringLiteral("font-weight: bold; color: #00457C;"));
+        valLbl->setStyleSheet(QStringLiteral("font-weight: bold; color: #354657;"));
 
         headerLayout->addWidget(nameLbl);
         headerLayout->addWidget(valLbl, 0, Qt::AlignRight);
@@ -806,6 +837,29 @@ void QProcessingWidget::handlePipelineSelectionChanged() {
             auto* slider = new QSlider(Qt::Horizontal, this);
             slider->setRange(static_cast<int>(spec.minValue), static_cast<int>(spec.maxValue));
             slider->setValue(static_cast<int>(currentVal));
+            slider->setStyleSheet(QStringLiteral(
+                "QSlider::groove:horizontal {"
+                "  border: none;"
+                "  height: 4px;"
+                "  background: #e2e8f0;"
+                "  border-radius: 2px;"
+                "}"
+                "QSlider::sub-page:horizontal {"
+                "  background: #354657;"
+                "  border-radius: 2px;"
+                "}"
+                "QSlider::handle:horizontal {"
+                "  background: #ffffff;"
+                "  border: 2px solid #354657;"
+                "  width: 14px;"
+                "  height: 14px;"
+                "  margin: -5px 0;"
+                "  border-radius: 7px;"
+                "}"
+                "QSlider::handle:horizontal:hover {"
+                "  background: #354657;"
+                "}"
+            ));
 
             connect(slider, &QSlider::valueChanged, this, &QProcessingWidget::handleDynamicSliderChanged);
             _paramLayout->addWidget(slider);
@@ -834,10 +888,7 @@ void QProcessingWidget::handlePipelineSelectionChanged() {
 void QProcessingWidget::handleDynamicSliderChanged() {
     auto* slider = qobject_cast<QSlider*>(sender());
     if (!slider) return;
-
-    int index = _pipelineList->currentRow();
-    if (index < 0 || index >= (int)_activeNodes.size()) return;
-    auto& node = _activeNodes[index];
+    if (!_scriptNode) return;
 
     for (auto& ctrl : _dynamicControls) {
         if (ctrl.controlWidget == slider) {
@@ -845,7 +896,7 @@ void QProcessingWidget::handleDynamicSliderChanged() {
             if (ctrl.valueLabel) {
                 ctrl.valueLabel->setText(QString::number(slider->value()));
             }
-            node->setParameter(ctrl.index, val);
+            _scriptNode->setParameter(ctrl.index, val);
             break;
         }
     }
@@ -854,17 +905,14 @@ void QProcessingWidget::handleDynamicSliderChanged() {
 void QProcessingWidget::handleDynamicSpinBoxChanged(double value) {
     auto* spin = qobject_cast<QDoubleSpinBox*>(sender());
     if (!spin) return;
-
-    int index = _pipelineList->currentRow();
-    if (index < 0 || index >= (int)_activeNodes.size()) return;
-    auto& node = _activeNodes[index];
+    if (!_scriptNode) return;
 
     for (auto& ctrl : _dynamicControls) {
         if (ctrl.controlWidget == spin) {
             if (ctrl.valueLabel) {
                 ctrl.valueLabel->setText(QString::number(value, 'f', spin->decimals()));
             }
-            node->setParameter(ctrl.index, value);
+            _scriptNode->setParameter(ctrl.index, value);
             break;
         }
     }
@@ -876,8 +924,8 @@ void QProcessingWidget::updatePipelineInController() {
     if (!pipe) return;
 
     pipe->clearNodes();
-    for (const auto& node : _activeNodes) {
-        pipe->addNode(node);
+    if (_scriptNode) {
+        pipe->addNode(_scriptNode);
     }
 }
 
@@ -887,12 +935,11 @@ QString QProcessingWidget::getScratchDir() const {
 
 void QProcessingWidget::handleCompile() {
 #ifdef HAS_OPENCV
-    if (!_codeEditor || !_compileButton || !_logConsole) return;
+    if (!_codeEditor || !_compileButton) return;
 
     _compileButton->setEnabled(false);
     _compileButton->setText(QStringLiteral("Compiling..."));
-    _logConsole->clear();
-    _logConsole->append(QStringLiteral("Saving dynamic filter script..."));
+    qInfo() << "[Pipeline] Saving dynamic filter script...";
 
     QString scratchDir = getScratchDir();
     QDir().mkpath(scratchDir);
@@ -900,7 +947,7 @@ void QProcessingWidget::handleCompile() {
     QString filePath = scratchDir + QStringLiteral("/dynamic_filter.cpp");
     QFile file(filePath);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        _logConsole->append(QStringLiteral("Error: Failed to create dynamic_filter.cpp"));
+        qCritical() << "[Pipeline] [Error] Failed to create dynamic_filter.cpp";
         _compileButton->setEnabled(true);
         _compileButton->setText(QStringLiteral("Compile & Apply Hot-Swap"));
         return;
@@ -910,7 +957,15 @@ void QProcessingWidget::handleCompile() {
     out << "#include <opencv2/opencv.hpp>\n"
         << "#include <algorithm>\n\n"
         << "extern \"C\" {\n"
-        << "    void process_image(unsigned char* data, int width, int height, int channels, int step, double param1, double param2) {\n"
+        << "    void process_image(unsigned char* data, int width, int height, int channels, int step, const double* params, int paramCount) {\n";
+
+    auto parsed = ParameterParser::parseCode(_codeEditor->toPlainText());
+    for (size_t i = 0; i < parsed.size(); ++i) {
+        const auto& p = parsed[i];
+        out << "        double " << p.varName << " = (paramCount > " << i << ") ? params[" << i << "] : " << p.defaultValue << ";\n";
+    }
+
+    out << "\n"
         << "        int type = (channels == 4) ? CV_8UC4 : ((channels == 3) ? CV_8UC3 : CV_8UC1);\n"
         << "        cv::Mat img(height, width, type, data, step);\n\n"
         << "        // USER SCRIPT START\n"
@@ -920,7 +975,7 @@ void QProcessingWidget::handleCompile() {
         << "}\n";
     file.close();
 
-    _logConsole->append(QStringLiteral("Launching clang++..."));
+    qInfo() << "[Pipeline] Launching clang++...";
 
     if (_compiler) {
         _compiler->kill();
@@ -948,12 +1003,20 @@ void QProcessingWidget::handleCompile() {
     arguments << QStringLiteral("-L") + libDir;
     arguments << QStringLiteral("-lopencv_core") << QStringLiteral("-lopencv_imgproc");
 
+    // Generate a unique library name using current timestamp to avoid OS dlopen cache issues
+    qint64 timestamp = QDateTime::currentMSecsSinceEpoch();
+    QString dylibName = QStringLiteral("libdynamic_filter_%1.dylib").arg(timestamp);
+    QString dylibPath = scratchDir + QStringLiteral("/") + dylibName;
+
+    // Set dylibPath property to retrieve it asynchronously upon completion
+    _compiler->setProperty("dylibPath", dylibPath);
+
     // Input / Output files
     arguments << QStringLiteral("dynamic_filter.cpp")
               << QStringLiteral("-o")
-              << QStringLiteral("libdynamic_filter.dylib");
+              << dylibName;
 
-    _logConsole->append(QStringLiteral("Command: clang++ ") + arguments.join(QStringLiteral(" ")));
+    qInfo() << "[Pipeline] Command: clang++" << arguments.join(QStringLiteral(" "));
 
     connect(_compiler, &QProcess::finished, this, &QProcessingWidget::handleCompilerFinished);
     _compiler->start(QStringLiteral("clang++"), arguments);
@@ -965,132 +1028,68 @@ void QProcessingWidget::handleCompilerFinished(int exitCode, QProcess::ExitStatu
     _compileButton->setEnabled(true);
     _compileButton->setText(QStringLiteral("Compile & Apply Hot-Swap"));
 
+    QProcess* proc = qobject_cast<QProcess*>(sender());
+    if (!proc) return;
+    QString dylibPath = proc->property("dylibPath").toString();
+
     if (exitStatus == QProcess::CrashExit) {
-        _logConsole->append(QStringLiteral("\n[Error] Compiler process crashed!"));
+        qCritical() << "[Pipeline] [Error] Compiler process crashed!";
         return;
     }
 
     if (exitCode == 0) {
-        _logConsole->append(QStringLiteral("\n[Success] Compilation succeeded!"));
-        QString dylibPath = getScratchDir() + QStringLiteral("/libdynamic_filter.dylib");
+        qInfo() << "[Pipeline] [Success] Compilation succeeded!";
         loadDynamicNode(dylibPath);
     } else {
-        QString errStr = QString::fromLocal8Bit(_compiler->readAllStandardError());
-        _logConsole->append(QStringLiteral("\n[Failed] Compilation failed with code ") + QString::number(exitCode));
-        _logConsole->append(errStr);
+        QString errStr = QString::fromLocal8Bit(proc->readAllStandardError());
+        qCritical() << "[Pipeline] [Failed] Compilation failed with code" << exitCode;
+        qWarning() << "[Pipeline] Compiler output:\n" << errStr;
     }
 #endif
 }
 
 void QProcessingWidget::loadDynamicNode(const QString& dylibPath) {
-    _logConsole->append(QStringLiteral("Loading dylib: ") + dylibPath);
+    qInfo() << "[Pipeline] Loading dylib:" << dylibPath;
 
     // 1. Load the dynamic library loader
     auto loader = DynamicLibraryLoader::load(dylibPath);
     if (!loader) {
-        _logConsole->append(QStringLiteral("[Error] Failed to load library."));
+        qCritical() << "[Pipeline] [Error] Failed to load library.";
         return;
     }
 
-    // 2. Create the node
-    // Since we decided to use a Qt-independent symbol mapping for maximum compiler robustness,
-    // let's resolve 'process_image' instead of 'create_node' if we use the simple contract.
-    // Let's implement a wrapper node that calls 'process_image'.
-    using ProcessImageFunc = void (*)(unsigned char*, int, int, int, int, double, double);
+    // 2. Resolve 'process_image'
+    using ProcessImageFunc = void (*)(unsigned char*, int, int, int, int, const double*, int);
     auto func = reinterpret_cast<ProcessImageFunc>(loader->resolve("process_image"));
     if (!func) {
-        _logConsole->append(QStringLiteral("[Error] Symbol 'process_image' not resolved."));
+        qCritical() << "[Pipeline] [Error] Symbol 'process_image' not resolved.";
         return;
     }
 
-    // Custom inline wrapper node that holds std::shared_ptr<DynamicLibraryLoader>
-    class DynamicWrapperNode : public ProcessingNode {
-    public:
-        DynamicWrapperNode(std::shared_ptr<DynamicLibraryLoader> l, ProcessImageFunc f)
-            : _loader(std::move(l)), _func(f) {}
-
-        QString name() const override { return "Dynamic Hot-Swap Filter"; }
-
-        std::vector<ParameterSpec> parameterSpecs() const override {
-            return {
-                { QStringLiteral("Parameter 1"), 1.0, 100.0, 5.0, 0 },
-                { QStringLiteral("Parameter 2"), 1.0, 250.0, 50.0, 0 }
-            };
-        }
-
-        double getParameter(int index) const override {
-            if (index == 0) return _p1;
-            else if (index == 1) return _p2;
-            return 0.0;
-        }
-
-        void setParameter(int index, double value) override {
-            if (index == 0) _p1 = value;
-            else if (index == 1) _p2 = value;
-        }
-
-        void process(ProcessingFrame& frame) override {
-            if (std::holds_alternative<QImage>(frame.payload)) {
-                QImage& img = std::get<QImage>(frame.payload);
-                if (img.isNull()) return;
-
-                // Deep copy if shared, to guarantee thread-safe in-place modification
-                img.detach();
-
-                int channels = 1;
-                if (img.format() == QImage::Format_RGB32 || img.format() == QImage::Format_ARGB32) {
-                    channels = 4;
-                } else if (img.format() == QImage::Format_RGB888 || img.format() == QImage::Format_BGR888) {
-                    channels = 3;
-                }
-
-                _func(img.bits(), img.width(), img.height(), channels, img.bytesPerLine(), _p1, _p2);
-            }
-        }
-
-    private:
-        std::shared_ptr<DynamicLibraryLoader> _loader;
-        ProcessImageFunc _func = nullptr;
-        double _p1 = 5.0;
-        double _p2 = 50.0;
-    };
-
-    auto dynamicNode = std::make_shared<DynamicWrapperNode>(loader, func);
-
-    // Set parameters from default values
-    dynamicNode->setParameter(0, 5.0);
-    dynamicNode->setParameter(1, 50.0);
-
-    // 3. Keep the loader alive globally in UI too (so we have a reference, though the node also has one)
+    // 3. Keep the loader alive globally
     _dynamicLoader = loader;
 
-    // 4. Remove any existing dynamic wrapper nodes in our pipeline
-    for (auto it = _activeNodes.begin(); it != _activeNodes.end(); ) {
-        if ((*it)->name() == QStringLiteral("Dynamic Hot-Swap Filter")) {
-            // Find corresponding item in list widget and remove
-            int idx = std::distance(_activeNodes.begin(), it);
-            _activeNodes.erase(it);
-            delete _pipelineList->takeItem(idx);
-            // Don't break because there could theoretically be more, but we just continue
-        } else {
-            ++it;
+    // 4. Update the library and specifications in our persistent script node
+    if (_scriptNode) {
+        std::vector<ParameterSpec> newSpecs;
+        if (_codeEditor) {
+            auto parsed = ParameterParser::parseCode(_codeEditor->toPlainText());
+            for (const auto& p : parsed) {
+                newSpecs.push_back({ p.displayName, p.minValue, p.maxValue, p.defaultValue, p.decimals });
+            }
         }
+        _scriptNode->updateLibraryAndSpecs(loader, func, newSpecs);
     }
 
-    // 5. Add new dynamic node
-    _activeNodes.push_back(dynamicNode);
-    auto* item = new QListWidgetItem(_pipelineList);
-    item->setText(dynamicNode->name());
-    item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
-    item->setCheckState(Qt::Checked);
+    // Keep dynamic library path for tracking, but avoid removing previous file immediately.
+    // Memory mapped library file removal while in use can cause ExcBadAccess crash on macOS paging.
+    _currentDylibPath = dylibPath;
 
-    _logConsole->append(QStringLiteral("[OK] Dynamic Hot-Swap Filter active and injected."));
+    qInfo() << "[Pipeline] [Success] OpenCV Filter Script active and injected.";
 
-    updatePipelineInController();
-    handlePipelineSelectionChanged();
+    refreshParameterUI();
 }
 
 void QProcessingWidget::resizeEvent(QResizeEvent* event) {
     QWidget::resizeEvent(event);
 }
-

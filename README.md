@@ -12,6 +12,7 @@ Playground is a Qt host workspace for composing and testing the Camera, Gocator,
 - `MainWindow` owns the MDI workspace, device creation menu, global log dock, and shutdown ordering.
 - `DeviceSession` owns one imaging session authority boundary.
 - `GraphicsEngine` is the session central widget and remains visualization-only.
+- The host installs the `GraphicsEngine` QVTK/OpenGL default surface format before `QApplication`, so first session creation does not perform delayed global graphics setup.
 - Device control widgets are docked panels managed by the session.
 - `QProcessingWidget` is hosted in a hidden-by-default `Image Processing Pipeline` dock.
 - `CameraImagingController`, `GocatorImagingController`, and `StaticImageImagingController` own acquisition/session flow.

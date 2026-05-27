@@ -50,4 +50,13 @@ private:
 
     std::unique_ptr<AbstractImagingController> _controller;
     GraphicsEngineSink* _sink = nullptr;
+
+    bool _processingDockWasDockedVisible = false;
+    int _undockedMainWindowWidth = 0;
+
+protected:
+    void resizeEvent(QResizeEvent* event) override;
+
+private slots:
+    void updateProcessingDockLayoutState();
 };

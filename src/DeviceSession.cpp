@@ -13,6 +13,9 @@
 #include <QMenuBar>
 #include <QMenu>
 #include <QAction>
+#include <QTimer>
+#include <QResizeEvent>
+#include <QMdiSubWindow>
 
 DeviceSession::DeviceSession(Camera* camera, CameraSystem* cameraSystem, QWidget* parent)
     : QMainWindow(parent), _camera(camera), _cameraSystem(cameraSystem), _gocator(nullptr) {
@@ -123,13 +126,12 @@ void DeviceSession::createProcessingDock() {
     _processingDock = new QDockWidget(QStringLiteral("Image Processing Pipeline"), this);
     _processingDock->setObjectName(QStringLiteral("ProcessingPipelineDock"));
     _processingDock->setWidget(_processingWidget);
-    addDockWidget(Qt::LeftDockWidgetArea, _processingDock);
+    addDockWidget(Qt::RightDockWidgetArea, _processingDock);
 
-    if (_controlDock) {
-        tabifyDockWidget(_controlDock, _processingDock);
-        _controlDock->raise();
-    }
     _processingDock->hide(); // Default HIDE
+
+    connect(_processingDock, &QDockWidget::visibilityChanged, this, &DeviceSession::updateProcessingDockLayoutState);
+    connect(_processingDock, &QDockWidget::topLevelChanged, this, &DeviceSession::updateProcessingDockLayoutState);
 }
 
 void DeviceSession::setupViewMenu() {
@@ -147,5 +149,84 @@ void DeviceSession::setupViewMenu() {
         QAction* toggleProcAct = _processingDock->toggleViewAction();
         toggleProcAct->setText(QStringLiteral("Image Processing Pipeline"));
         viewMenu->addAction(toggleProcAct);
+    }
+}
+
+void DeviceSession::updateProcessingDockLayoutState() {
+    if (!_processingDock) return;
+
+    bool isDockedVisible = _processingDock->isVisible() && !_processingDock->isFloating();
+    if (isDockedVisible == _processingDockWasDockedVisible) return; // No state change
+
+    _processingDockWasDockedVisible = isDockedVisible;
+
+    // Use QTimer::singleShot to let the layout engine settle before measuring sizes and resizing QMainWindow
+    QTimer::singleShot(50, this, [this, isDockedVisible]() {
+        if (!_processingDock) return;
+
+        bool currentDockedVisible = _processingDock->isVisible() && !_processingDock->isFloating();
+        if (currentDockedVisible != isDockedVisible) return;
+
+        int dockWidth = _processingDock->widget() ? _processingDock->widget()->sizeHint().width() : 320;
+        if (dockWidth <= 0) dockWidth = 320;
+        dockWidth += 12; // padding for dock frame/borders
+
+        int currentWidth = width();
+        int currentHeight = height();
+        if (auto* subWin = qobject_cast<QMdiSubWindow*>(parentWidget())) {
+            currentWidth = subWin->width();
+            currentHeight = subWin->height();
+        }
+
+        int newWidth = currentWidth;
+        int newHeight = currentHeight;
+
+        if (isDockedVisible) {
+            if (_undockedMainWindowWidth > 0) {
+                newWidth = _undockedMainWindowWidth + dockWidth;
+            } else {
+                newWidth = currentWidth + dockWidth;
+            }
+
+            // Grow height if the current height is less than the dock's minimum height requirements
+            if (_processingDock->widget()) {
+                int minDockHeight = _processingDock->widget()->minimumSizeHint().height();
+                minDockHeight += 45; // title bar of the dock and margins
+                if (newHeight < minDockHeight) {
+                    newHeight = minDockHeight;
+                }
+            }
+
+            if (auto* subWin = qobject_cast<QMdiSubWindow*>(parentWidget())) {
+                subWin->resize(newWidth, newHeight);
+            } else {
+                resize(newWidth, newHeight);
+            }
+            resizeDocks({_processingDock}, {dockWidth}, Qt::Horizontal);
+        } else {
+            newWidth = currentWidth - dockWidth;
+            if (newWidth > minimumWidth()) {
+                if (auto* subWin = qobject_cast<QMdiSubWindow*>(parentWidget())) {
+                    subWin->resize(newWidth, newHeight);
+                } else {
+                    resize(newWidth, newHeight);
+                }
+            }
+            _undockedMainWindowWidth = newWidth;
+        }
+    });
+}
+
+void DeviceSession::resizeEvent(QResizeEvent* event) {
+    QMainWindow::resizeEvent(event);
+
+    // Cache the undocked width if the processing dock is not docked & visible
+    bool isDockedVisible = _processingDock && _processingDock->isVisible() && !_processingDock->isFloating();
+    if (!isDockedVisible) {
+        if (auto* subWin = qobject_cast<QMdiSubWindow*>(parentWidget())) {
+            _undockedMainWindowWidth = subWin->width();
+        } else {
+            _undockedMainWindowWidth = width();
+        }
     }
 }

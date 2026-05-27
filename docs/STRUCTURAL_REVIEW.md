@@ -18,6 +18,7 @@
 | Medium | Processing dock vs frame domain | Processing controls are hosted for sessions although Scene3D node semantics remain undefined. | UI advertises capability beyond implemented processing behavior. | Gate or label Scene3D pass-through before enabling 3D node work. |
 | Medium | Empty source vs display clearing | `GraphicsEngineSink::enqueueImage` ignores null images used when the last static image is removed. | Stale display can survive an empty session. | Add explicit clear-display semantics. |
 | Medium | Dynamic loader ABI vs compile UI | `DynamicLibraryLoader` expects `create_node`, while `QProcessingWidget` resolves `process_image` and owns a second wrapper/ABI; compile output is `clang++`/`.dylib`-fixed. | Enabled OpenCV builds expose a platform-specific path with two extension contracts. | Decide one ABI and extract platform-aware compiler/load policy from the widget. |
+| Medium | First native VTK widget vs visible host refresh | `DeviceSession` creates the first `GraphicsEngine` after the MDI host is visible. | Early QVTK surface setup removes delayed global-format mutation, but first native widget attachment can still refresh the macOS backing layer. | Validate on macOS; consider host-owned pre-creation only if the visual refresh remains. |
 | Low | Runtime dependency policy vs cross-platform claim | Gocator/pylon runtime discovery and deployment handling are platform-specific. | Windows/macOS support cannot be claimed from Linux integration builds alone. | Maintain per-platform runtime verification before distribution claims. |
 
 ## Resolved In This Cleanup
@@ -26,6 +27,8 @@
 - Removed unused profile capability-looking fields; actual frame components remain authoritative for RGB decoding.
 - Deleted completed/redundant host walkthrough and imaging-controller plan documents.
 - Removed hardcoded `/opt/opencv` CMake discovery; OpenCV now follows optional package discovery while dynamic ABI/platform policy remains listed debt.
+- Added host opt-in `GraphicsEngine::installDefaultSurfaceFormat()` startup use while keeping direct-widget fallback.
+- Kept the active dynamic-library owner alive during `process_image` execution so a hot-swap cannot unload the executing code path.
 
 ## Repository Rule
 - Parent commits contain host code, docs, and submodule pointers.

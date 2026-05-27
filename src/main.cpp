@@ -1,18 +1,17 @@
 #include "MainWindow.h"
 #include "Resources.h"
 #include "Utility/LogManager.h"
+#include "engine/GraphicsEngine.h"
 #include <QApplication>
 #include <QFont>
 
 int main(int argc, char* argv[])
 {
-    QApplication app(argc, argv);
+    // Configure the VTK/GL default before a visible host window can be refreshed
+    // by the first session-created OpenGL widget.
+    GraphicsEngine::installDefaultSurfaceFormat();
 
-#if defined(__APPLE__)
-    // Explicitly set default font to avoid "Sans Serif" alias lookup penalty (51ms) on macOS
-    QFont defaultFont(QStringLiteral(".AppleSystemUIFont"), 12);
-    QApplication::setFont(defaultFont);
-#endif
+    QApplication app(argc, argv);
 
     // Initialize global log manager after QApplication is created
     LogManager::instance()->init();
