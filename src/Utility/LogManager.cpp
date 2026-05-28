@@ -19,6 +19,7 @@ public:
     }
 
     ~StdStreamRedirector() override {
+        processBuffer(true);
         _stream.rdbuf(_oldBuf);
     }
 
@@ -28,22 +29,32 @@ public:
 
 protected:
     int_type overflow(int_type v) override {
-        if (v == '\n') {
-            processBuffer();
-        } else if (v != traits_type::eof()) {
+        if (v != traits_type::eof()) {
             _buffer.push_back(static_cast<char>(v));
+            if (v == '\n') {
+                processBuffer(false);
+            }
         }
         return v;
     }
 
     int sync() override {
-        processBuffer();
+        processBuffer(false);
         return 0;
     }
 
 private:
-    void processBuffer() {
-        if (!_buffer.empty()) {
+    void processBuffer(bool force = false) {
+        size_t pos;
+        while ((pos = _buffer.find('\n')) != std::string::npos) {
+            std::string line = _buffer.substr(0, pos);
+            _buffer.erase(0, pos + 1);
+            QString msg = QString::fromStdString(line).trimmed();
+            if (!msg.isEmpty()) {
+                LogManager::instance()->logDirect(msg, _type);
+            }
+        }
+        if (force && !_buffer.empty()) {
             QString msg = QString::fromStdString(_buffer).trimmed();
             _buffer.clear();
             if (!msg.isEmpty()) {

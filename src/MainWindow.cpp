@@ -7,6 +7,7 @@
 #include "Chrome/MdiSubWindowContainer.h"
 #include "Utility/LogManager.h"
 #include <QAction>
+#include <QWindow>
 #include <QMenu>
 #include <QMenuBar>
 #include <QMdiArea>
@@ -39,6 +40,8 @@ protected:
         Q_UNUSED(event);
 
         QPainter painter(viewport());
+        painter.setRenderHint(QPainter::Antialiasing);
+        painter.setRenderHint(QPainter::SmoothPixmapTransform);
         painter.fillRect(viewport()->rect(), QColor(QStringLiteral("#eeeeee")));
 
         if (_logo.isNull()) return;
@@ -74,6 +77,17 @@ protected:
     }
 };
 
+void installRecursiveEventFilter(QWidget* widget, QObject* filter) {
+    if (!widget) return;
+    widget->setMouseTracking(true);
+    widget->installEventFilter(filter);
+    const auto children = widget->findChildren<QWidget*>();
+    for (QWidget* child : children) {
+        child->setMouseTracking(true);
+        child->installEventFilter(filter);
+    }
+}
+
 } // namespace
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
@@ -92,14 +106,17 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     _mdiArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     setCentralWidget(_mdiArea);
     createOpenGLCompositionSeed();
+    installRecursiveEventFilter(_mdiArea, this);
 
     statusBar()->setSizeGripEnabled(false);
+    installRecursiveEventFilter(statusBar(), this);
 
     createLogDock();
     createMenus();
 
     menuBar()->setNativeMenuBar(false);
     auto* titleBar = new MainTitleBar(this, menuBar(), this);
+    installRecursiveEventFilter(titleBar, this);
     setMenuWidget(titleBar);
 
     connect(LogManager::instance(), &LogManager::logAdded, this, &MainWindow::appendLog, Qt::QueuedConnection);
@@ -300,6 +317,7 @@ void MainWindow::createLogDock() {
 
     _logDock->setWidget(_logViewer);
     addDockWidget(Qt::BottomDockWidgetArea, _logDock);
+    installRecursiveEventFilter(_logDock, this);
 }
 
 void MainWindow::appendLog(const QString& msg) {
@@ -321,8 +339,21 @@ void MainWindow::mousePressEvent(QMouseEvent* event)
 {
     if (event->button() == Qt::LeftButton) {
         _dragStartPos = event->globalPosition().toPoint();
-        _resizeMode = determineResizeMode(event->position().toPoint());
-        if (_resizeMode != ResizeNone) {
+        QPoint localPos = mapFromGlobal(event->globalPosition().toPoint());
+        int mode = determineResizeMode(localPos);
+        if (mode != ResizeNone) {
+            if (auto* window = this->windowHandle()) {
+                Qt::Edges edges = Qt::Edges();
+                if (mode & ResizeLeft) edges |= Qt::LeftEdge;
+                if (mode & ResizeRight) edges |= Qt::RightEdge;
+                if (mode & ResizeTop) edges |= Qt::TopEdge;
+                if (mode & ResizeBottom) edges |= Qt::BottomEdge;
+
+                window->startSystemResize(edges);
+                event->accept();
+                return;
+            }
+            _resizeMode = mode;
             event->accept();
             return;
         }
@@ -372,7 +403,8 @@ void MainWindow::mouseMoveEvent(QMouseEvent* event)
         event->accept();
         return;
     } else {
-        updateCursorShape(event->position().toPoint());
+        QPoint localPos = mapFromGlobal(event->globalPosition().toPoint());
+        updateCursorShape(localPos);
     }
     QMainWindow::mouseMoveEvent(event);
 }
@@ -426,4 +458,61 @@ void MainWindow::leaveEvent(QEvent* event)
 {
     Q_UNUSED(event);
     setCursor(Qt::ArrowCursor);
+}
+
+bool MainWindow::eventFilter(QObject* watched, QEvent* event)
+{
+    auto* watchedWidget = qobject_cast<QWidget*>(watched);
+    if (!watchedWidget) {
+        return QMainWindow::eventFilter(watched, event);
+    }
+
+    if (event->type() == QEvent::MouseMove) {
+        auto* mouseEvent = static_cast<QMouseEvent*>(event);
+        QPoint localPos = mapFromGlobal(mouseEvent->globalPosition().toPoint());
+
+        if (_resizeMode != ResizeNone) {
+            this->mouseMoveEvent(mouseEvent);
+            return true;
+        }
+
+        int mode = determineResizeMode(localPos);
+        if (mode != ResizeNone) {
+            // Determine the cursor shape
+            Qt::CursorShape shape = Qt::ArrowCursor;
+            if ((mode & ResizeLeft && mode & ResizeTop) || (mode & ResizeRight && mode & ResizeBottom)) {
+                shape = Qt::SizeFDiagCursor;
+            } else if ((mode & ResizeRight && mode & ResizeTop) || (mode & ResizeLeft && mode & ResizeBottom)) {
+                shape = Qt::SizeBDiagCursor;
+            } else if (mode & ResizeLeft || mode & ResizeRight) {
+                shape = Qt::SizeHorCursor;
+            } else if (mode & ResizeTop || mode & ResizeBottom) {
+                shape = Qt::SizeVerCursor;
+            }
+
+            this->setCursor(shape);
+            watchedWidget->setCursor(shape);
+            return true;
+        } else {
+            this->unsetCursor();
+            watchedWidget->unsetCursor();
+        }
+    }
+    else if (event->type() == QEvent::MouseButtonPress) {
+        auto* mouseEvent = static_cast<QMouseEvent*>(event);
+        QPoint localPos = mapFromGlobal(mouseEvent->globalPosition().toPoint());
+        int mode = determineResizeMode(localPos);
+        if (mode != ResizeNone) {
+            this->mousePressEvent(mouseEvent);
+            return true;
+        }
+    }
+    else if (event->type() == QEvent::MouseButtonRelease) {
+        if (_resizeMode != ResizeNone) {
+            auto* mouseEvent = static_cast<QMouseEvent*>(event);
+            this->mouseReleaseEvent(mouseEvent);
+            return true;
+        }
+    }
+    return QMainWindow::eventFilter(watched, event);
 }

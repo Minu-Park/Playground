@@ -196,11 +196,11 @@ bool DynamicProcessingCompiler::prepareOpenCvProcessImageBuild(
             arguments << QStringLiteral("-L") + environment.libraryDir;
             arguments << QStringLiteral("-Wl,-rpath,") + environment.libraryDir;
         }
+        arguments << sourceFileName;
         for (const QString& library : environment.libraries) {
             arguments << (library.startsWith(QStringLiteral("-l")) ? library : QStringLiteral("-l") + library);
         }
-        arguments << sourceFileName
-                  << QStringLiteral("-o")
+        arguments << QStringLiteral("-o")
                   << outputFileName;
     }
 
