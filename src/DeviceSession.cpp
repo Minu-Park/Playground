@@ -71,6 +71,8 @@ void DeviceSession::initCommon() {
     setCentralWidget(_graphicsEngine);
     _sink = new GraphicsEngineSink(_graphicsEngine, this);
     setTabPosition(Qt::AllDockWidgetAreas, QTabWidget::North);
+    _undockedMainWindowWidth = 450;
+    _controlDockWasDockedVisible = true;
 }
 
 void DeviceSession::initCamera() {
@@ -121,6 +123,9 @@ void DeviceSession::setControlWidget(QWidget* widget, const QString& title) {
     _controlDock->setWidget(widget);
     addDockWidget(Qt::LeftDockWidgetArea, _controlDock);
     _controlDock->show();
+
+    connect(_controlDock, &QDockWidget::visibilityChanged, this, &DeviceSession::updateControlDockLayoutState);
+    connect(_controlDock, &QDockWidget::topLevelChanged, this, &DeviceSession::updateControlDockLayoutState);
 }
 
 void DeviceSession::createProcessingDock() {
@@ -157,80 +162,84 @@ void DeviceSession::setupViewMenu() {
     }
 }
 
+void DeviceSession::updateControlDockLayoutState() {
+    if (!_controlDock) return;
+
+    updateGeometry();
+
+    bool isDockedVisible = _controlDock->isVisible() && !_controlDock->isFloating();
+    if (isDockedVisible == _controlDockWasDockedVisible) return;
+
+    _controlDockWasDockedVisible = isDockedVisible;
+
+    QTimer::singleShot(50, this, [this, isDockedVisible]() {
+        if (!_controlDock) return;
+        bool currentDockedVisible = _controlDock->isVisible() && !_controlDock->isFloating();
+        if (currentDockedVisible != isDockedVisible) return;
+
+        updateGeometry();
+        adjustSessionWidth();
+    });
+}
+
 void DeviceSession::updateProcessingDockLayoutState() {
     if (!_processingDock) return;
 
-    updateGeometry(); // Trigger layout update for new minimum size calculation
+    updateGeometry();
 
     bool isDockedVisible = _processingDock->isVisible() && !_processingDock->isFloating();
-    if (isDockedVisible == _processingDockWasDockedVisible) return; // No state change
+    if (isDockedVisible == _processingDockWasDockedVisible) return;
 
     _processingDockWasDockedVisible = isDockedVisible;
 
-    // Use QTimer::singleShot to let the layout engine settle before measuring sizes and resizing QMainWindow
     QTimer::singleShot(50, this, [this, isDockedVisible]() {
         if (!_processingDock) return;
-
         bool currentDockedVisible = _processingDock->isVisible() && !_processingDock->isFloating();
         if (currentDockedVisible != isDockedVisible) return;
 
         updateGeometry();
-
-        int dockWidth = _processingDock->widget() ? _processingDock->widget()->sizeHint().width() : 320;
-        if (dockWidth <= 0) dockWidth = 320;
-        dockWidth += 12; // padding for dock frame/borders
-
-        int currentWidth = width();
-        int currentHeight = height();
-        if (_subWindow) {
-            currentWidth = _subWindow->width();
-            currentHeight = _subWindow->height();
-        }
-
-        int newWidth = currentWidth;
-        int newHeight = currentHeight;
-
-        if (isDockedVisible) {
-            if (_undockedMainWindowWidth > 0) {
-                newWidth = _undockedMainWindowWidth + dockWidth;
-            } else {
-                newWidth = currentWidth + dockWidth;
-            }
-
-            // Grow height if the current height is less than the dock's minimum height requirements
-            if (_processingDock->widget()) {
-                int minDockHeight = _processingDock->widget()->minimumSizeHint().height();
-                minDockHeight += 45; // title bar of the dock and margins
-                if (newHeight < minDockHeight) {
-                    newHeight = minDockHeight;
-                }
-            }
-
-            bool isMax = _subWindow ? _subWindow->isMaximized() : isMaximized();
-
-            if (!isMax) {
-                if (_subWindow) {
-                    _subWindow->resize(newWidth, newHeight);
-                } else {
-                    resize(newWidth, newHeight);
-                }
-            }
-            resizeDocks({_processingDock}, {dockWidth}, Qt::Horizontal);
-        } else {
-            bool isMax = _subWindow ? _subWindow->isMaximized() : isMaximized();
-            newWidth = currentWidth - dockWidth;
-            if (newWidth > minimumWidth()) {
-                if (!isMax) {
-                    if (_subWindow) {
-                        _subWindow->resize(newWidth, newHeight);
-                    } else {
-                        resize(newWidth, newHeight);
-                    }
-                    _undockedMainWindowWidth = newWidth;
-                }
-            }
-        }
+        adjustSessionWidth();
     });
+}
+
+void DeviceSession::adjustSessionWidth() {
+    bool controlDockedVisible = _controlDock && _controlDock->isVisible() && !_controlDock->isFloating();
+    bool processingDockedVisible = _processingDock && _processingDock->isVisible() && !_processingDock->isFloating();
+
+    int controlWidth = _controlDock && _controlDock->widget() ? _controlDock->widget()->sizeHint().width() : 300;
+    if (controlWidth <= 0) controlWidth = 300;
+    controlWidth += 12;
+
+    int processingWidth = _processingDock && _processingDock->widget() ? _processingDock->widget()->sizeHint().width() : 320;
+    if (processingWidth <= 0) processingWidth = 320;
+    processingWidth += 12;
+
+    int targetW = _undockedMainWindowWidth;
+    if (controlDockedVisible) targetW += controlWidth;
+    if (processingDockedVisible) targetW += processingWidth;
+
+    bool isMax = _subWindow ? _subWindow->isMaximized() : isMaximized();
+    if (!isMax && _subWindow) {
+        int targetH = _subWindow->height();
+
+        if (processingDockedVisible && _processingDock->widget()) {
+            int minH = _processingDock->widget()->minimumSizeHint().height() + 45;
+            targetH = qMax(targetH, minH);
+        }
+        if (controlDockedVisible && _controlDock->widget()) {
+            int minH = _controlDock->widget()->minimumSizeHint().height() + 45;
+            targetH = qMax(targetH, minH);
+        }
+
+        _subWindow->resize(targetW, targetH);
+
+        if (controlDockedVisible) {
+            resizeDocks({_controlDock}, {controlWidth}, Qt::Horizontal);
+        }
+        if (processingDockedVisible) {
+            resizeDocks({_processingDock}, {processingWidth}, Qt::Horizontal);
+        }
+    }
 }
 
 void DeviceSession::resizeEvent(QResizeEvent* event) {
@@ -274,11 +283,30 @@ QSize DeviceSession::minimumSizeHint() const {
 }
 
 void DeviceSession::notifyManualResizeFinished() {
-    bool isDockedVisible = _processingDock && _processingDock->isVisible() && !_processingDock->isFloating();
-    if (!isDockedVisible) {
-        bool isMax = _subWindow ? _subWindow->isMaximized() : isMaximized();
-        if (!isMax && _subWindow && !_subWindow->isMinimized()) {
-            _undockedMainWindowWidth = _subWindow->width();
+    bool isMax = _subWindow ? _subWindow->isMaximized() : isMaximized();
+    if (!isMax && _subWindow && !_subWindow->isMinimized()) {
+        bool controlDockedVisible = _controlDock && _controlDock->isVisible() && !_controlDock->isFloating();
+        bool processingDockedVisible = _processingDock && _processingDock->isVisible() && !_processingDock->isFloating();
+
+        int currentW = _subWindow->width();
+
+        int controlWidth = 0;
+        if (controlDockedVisible) {
+            controlWidth = _controlDock->widget() ? _controlDock->widget()->sizeHint().width() : 300;
+            if (controlWidth <= 0) controlWidth = 300;
+            controlWidth += 12;
+        }
+
+        int processingWidth = 0;
+        if (processingDockedVisible) {
+            processingWidth = _processingDock->widget() ? _processingDock->widget()->sizeHint().width() : 320;
+            if (processingWidth <= 0) processingWidth = 320;
+            processingWidth += 12;
+        }
+
+        int computedUndockedW = currentW - controlWidth - processingWidth;
+        if (computedUndockedW > 250) {
+            _undockedMainWindowWidth = computedUndockedW;
         }
     }
 }

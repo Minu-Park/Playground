@@ -40,6 +40,7 @@ private:
     void setControlWidget(QWidget* widget, const QString& title);
     void createProcessingDock();
     void setupViewMenu();
+    void adjustSessionWidth();
 
     QMdiSubWindow* _subWindow = nullptr;
     GraphicsEngine* _graphicsEngine = nullptr;
@@ -59,6 +60,7 @@ private:
     GraphicsEngineSink* _sink = nullptr;
 
     bool _processingDockWasDockedVisible = false;
+    bool _controlDockWasDockedVisible = false;
     int _undockedMainWindowWidth = 0;
 
 protected:
@@ -66,4 +68,5 @@ protected:
 
 private slots:
     void updateProcessingDockLayoutState();
+    void updateControlDockLayoutState();
 };
