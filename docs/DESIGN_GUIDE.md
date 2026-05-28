@@ -73,7 +73,9 @@ QLabel#CameraMessageLabel[messageState="error"] {
 ## Frameless Window Interaction
 - **DPI-aware Logo Scaling**: Raw logos must be scaled by multiplying the target logical size by `devicePixelRatio()` in C++, then setting `setDevicePixelRatio()` on the scaled pixmap before insertion, preventing upsizing blurriness.
 - **DPI-aware Stateful Button Icons**: Custom button icons (such as minimize, maximize, and close buttons) require smooth scaling. Direct QSS `image` paths scale poorly without anti-aliasing. Implement stateful swaps via C++ `eventFilter` on `QEvent::Enter` and `QEvent::Leave` to bypass `QStyleSheetStyle`'s QIcon::Active rendering limitations.
-- **Native Window Operations**: For smooth dragging and resizing of frameless windows without jitter or titlebar layout collapse, delegate window dragging to `QWindow::startSystemMove()` and window resizing to `QWindow::startSystemResize()`.
+- **Native Window Operations**: For smooth dragging and resizing of frameless windows without jitter or titlebar layout collapse, delegate window dragging to `QWindow::startSystemMove()` and window resizing to `QWindow::startSystemResize()`. If native move is refused during first activation/exposure, fall back to manual dragging for that press.
+- **Frameless Analysis Dialogs**: Analysis dialogs (Plot View, Line Profile, Statistics) inside the `GraphicsEngine` module are declared as frameless (`Qt::FramelessWindowHint`) and translucent (`Qt::WA_TranslucentBackground`). They integrate `AnalysisDialogTitleBar` at the top of their layouts for native-like window dragging and close operations.
+
 
 ## Exceptions
 - Custom `QPainter` surfaces cannot be fully styled by QSS. Keep local fallback colors until a dedicated theme-token API is designed.

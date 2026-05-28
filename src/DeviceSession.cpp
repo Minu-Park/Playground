@@ -119,7 +119,7 @@ void DeviceSession::setControlWidget(QWidget* widget, const QString& title) {
     _controlDock = new QDockWidget(title, this);
     _controlDock->setObjectName(QStringLiteral("SessionControlDock"));
     _controlDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
-    _controlDock->setTitleBarWidget(new DockTitleBar(_controlDock, this));
+    _controlDock->setTitleBarWidget(new DockTitleBar(_controlDock, _controlDock));
     _controlDock->setWidget(widget);
     addDockWidget(Qt::LeftDockWidgetArea, _controlDock);
     _controlDock->show();
@@ -134,7 +134,7 @@ void DeviceSession::createProcessingDock() {
 
     _processingDock = new QDockWidget(QStringLiteral("Image Processing Pipeline"), this);
     _processingDock->setObjectName(QStringLiteral("ProcessingPipelineDock"));
-    _processingDock->setTitleBarWidget(new DockTitleBar(_processingDock, this));
+    _processingDock->setTitleBarWidget(new DockTitleBar(_processingDock, _processingDock));
     _processingDock->setWidget(_processingWidget);
     addDockWidget(Qt::RightDockWidgetArea, _processingDock);
 
@@ -208,10 +208,12 @@ void DeviceSession::adjustSessionWidth() {
 
     int controlWidth = _controlDock && _controlDock->widget() ? _controlDock->widget()->sizeHint().width() : 300;
     if (controlWidth <= 0) controlWidth = 300;
+    controlWidth = qBound(300, controlWidth, 340);
     controlWidth += 12;
 
     int processingWidth = _processingDock && _processingDock->widget() ? _processingDock->widget()->sizeHint().width() : 320;
     if (processingWidth <= 0) processingWidth = 320;
+    processingWidth = qBound(320, processingWidth, 360);
     processingWidth += 12;
 
     int targetW = _undockedMainWindowWidth;
