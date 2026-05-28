@@ -62,5 +62,6 @@ git submodule update --init --recursive
 - `docs/STRUCTURE.md`: current ownership and integration layout.
 - `docs/DEVELOPMENT_GUIDE.md`: working commands, validation loop, and priorities.
 - `docs/SESSION_ARCHITECTURE.md`: class-by-class session ownership boundary.
+- `docs/DESIGN_GUIDE.md`: UI theme, Resources styling, and standalone fallback rules.
 - `docs/STEREO_3D_CAMERA_INTEGRATION.md`: current Stereo 3D contract and remaining decisions.
 - `docs/STRUCTURAL_REVIEW.md`: current structural risks and decisions needed.

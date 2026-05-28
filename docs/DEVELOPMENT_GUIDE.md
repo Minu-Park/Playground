@@ -4,10 +4,12 @@
 1. `AGENTS.md`
 2. `docs/STRUCTURE.md`
 3. `docs/SESSION_ARCHITECTURE.md`
-4. `docs/STRUCTURAL_REVIEW.md`
-5. Task-relevant module docs
+4. `docs/DESIGN_GUIDE.md` for UI, QSS, chrome, icon, or presentation changes.
+5. `docs/STRUCTURAL_REVIEW.md`
+6. Task-relevant module docs
 
 ## Integration Status
+- `docs/DESIGN_GUIDE.md`: Resources-based UI/theme rules and standalone module fallback policy.
 - `docs/STEREO_3D_CAMERA_INTEGRATION.md`: Basler Stereo mini/Stereo ace 현재 계약, 구현 결과, 남은 결정.
 - `docs/STRUCTURAL_REVIEW.md`: 처리 파이프라인 포함 현재 책임 경계 부채와 결정 대기 항목.
 
@@ -142,8 +144,8 @@ git -C modules/Resources diff --check
 - Keep every submodule current with its fetched upstream and check each repo independently before final reporting.
 - Publish changed module commits first; publish the parent pointer only after all referenced module commits are available upstream and the parent validation passes.
 - Keep callback UI writes queued to the GUI thread.
-- Keep style changes in `modules/Resources` unless a widget needs an object-name/API change.
-- Keep reusable chrome widgets, split styling, and icons in `modules/Resources`; parent `src/UI` must not own reusable presentation code.
+- Keep UI design changes under `docs/DESIGN_GUIDE.md` rules.
+- Keep style changes in `modules/Resources` unless a widget needs an object-name or semantic-property change.
 - Ask before changing module ownership, callback admission policy, render visibility policy, or backpressure behavior.
 
 ## Fresh Clone Troubleshooting
