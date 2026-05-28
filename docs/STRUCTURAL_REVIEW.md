@@ -56,3 +56,6 @@
 - Keep the startup OpenGL composition seed. It is a stability guard for first-session `QOpenGLWidget` insertion; do not remove it unless a platform-specific validation proves it unnecessary.
 - Custom chrome is presentation-only. Do not let title bars, dock title bars, or MDI wrapper state own acquisition, processing, or display admission.
 - Resources chrome widgets may own window-button input and visual state, but must not depend on parent session classes.
+- Delegate window drag/resize entirely to `QWindow::startSystemMove()` and `QWindow::startSystemResize()` in frameless window environments to prevent native layout lag and jitter.
+- Swap button icons (minimize/maximize/close) in a C++ `eventFilter` on `QEvent::Enter` and `QEvent::Leave` to bypass `QStyleSheetStyle`'s QIcon::Active rendering limitations and ensure clean DPI-aware hover visual changes.
+- Keep the maximize button's default visual representation as the maximize icon rather than toggling to restore icons upon maximization; only swap to its hover variation on mouse enter.
