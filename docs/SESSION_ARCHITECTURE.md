@@ -25,9 +25,11 @@
 | `CameraImagingController` | Camera callback registration, `Camera::ready()` admission, `PylonScene3DProfile` 기반 2D/3D conversion, pipeline execution, display enqueue | `MainWindow`, dock layout |
 | `GocatorImagingController` | Gocator callback registration, conversion, pipeline execution, display enqueue | `MainWindow`, dock layout |
 | `StaticImageImagingController` | Offline image list playback, FPS timing, pipeline execution, display enqueue | File picker UI layout |
-| `GraphicsEngineSink` | Queued GUI-thread delivery to the session `GraphicsEngine` | Acquisition policy, processing policy |
+| `GraphicsEngineSink` | Queued GUI-thread delivery and explicit display clear to the session `GraphicsEngine` | Acquisition policy, processing policy |
 | `QCameraWidget` / `QGocatorWidget` / `QStaticImageControlWidget` | Device or source control panel UI | Hardware lifetime authority |
-| `QProcessingWidget` | Pipeline editing UI | Frame admission, render visibility policy |
+| `QProcessingWidget` | Pipeline editing UI, parameter controls, compile request dispatch | Frame admission, render visibility policy, compiler/link argument policy |
+| `RuntimePathsDialog` | User-facing runtime path override editing | Dependency discovery order, compile/load execution |
+| `DynamicProcessingCompiler` | Generated source, compile arguments, output artifact paths, OpenCV build environment | UI layout, frame processing state |
 
 ## Status Contract
 - Camera and Gocator control widgets expose status through widget-specific labels and the shared dynamic property `status`.
@@ -64,7 +66,7 @@ DeviceSession
 - Controllers convert device payloads into `ProcessingFrame`.
 - Camera 3D routing keeps Blaze compatibility and converts Stereo mini/Stereo ace mono/color inputs through the Camera module's pylon Scene3D adapter.
 - `ProcessingPipeline` runs before display enqueue.
-- `GraphicsEngineSink` delivers processed output to the session `GraphicsEngine` on the GUI thread.
+- `GraphicsEngineSink` delivers processed output and explicit clear requests to the session `GraphicsEngine` on the GUI thread.
 - `GraphicsEngine` remains unaware of source type.
 
 ## Naming Policy
@@ -72,6 +74,6 @@ DeviceSession
 - Use `Control Panel` for user-facing dock text.
 
 ## Current Deferrals
-- Hidden-viewer retention policy is no longer tied to a dock, but explicit clear-display semantics remain unresolved.
+- Hidden-viewer retention policy is no longer tied to a dock.
 - Scene3D processing capability is still policy-limited until Scene3D nodes exist.
-- Dynamic OpenCV compilation is enabled only when OpenCV is found; its ABI and cross-platform compiler/output policy remain unresolved.
+- Dynamic OpenCV compilation uses `process_image` ABI v1. OpenCV paths can come from runtime settings, app-local runtime folders, or CMake-discovered defaults; broader plugin ABI remains unresolved.

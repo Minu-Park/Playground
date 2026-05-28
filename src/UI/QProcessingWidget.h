@@ -1,12 +1,14 @@
 #pragma once
 #include <QWidget>
 #include <QProcess>
+#include <QString>
 #include <memory>
 #include <vector>
 
 class QPushButton;
 class QLabel;
 class QCodeEditor;
+class QTextEdit;
 class AbstractImagingController;
 class QBoxLayout;
 class QToolButton;
@@ -37,6 +39,7 @@ private:
     void updatePipelineInController();
     void loadDynamicNode(const QString& dylibPath);
     QString getScratchDir() const;
+    QString getAutosaveDir() const;
 
     AbstractImagingController* _controller = nullptr;
 
@@ -57,11 +60,17 @@ private:
     QVBoxLayout* _paramLayout = nullptr;
     std::vector<ParameterControl> _dynamicControls;
 
+    // Parameter definition editor
+    QTextEdit* _paramEditor = nullptr;
+
     // Dynamic compiler UI (OpenCV optional)
     QCodeEditor* _codeEditor = nullptr;
+    QPushButton* _runtimePathsButton = nullptr;
     QPushButton* _compileButton = nullptr;
 
     QProcess* _compiler = nullptr;
+    QString _scratchDir;
+    QString _autosaveDir;
 
     // Script node instance
     std::shared_ptr<DynamicWrapperNode> _scriptNode;

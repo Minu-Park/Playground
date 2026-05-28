@@ -11,7 +11,7 @@ std::vector<ParsedParameter> ParameterParser::parseCode(const QString& code) {
     // Regex to detect "@param:" lines
     // Group 1: variable name
     // Group 2: remainder of the configuration
-    QRegularExpression paramLineRegex(QString::fromUtf8("//\\s*@param:\\s*([a-zA-Z_][a-zA-Z0-9_]*)(.*)$"));
+    QRegularExpression paramLineRegex(QString::fromUtf8("(?://\\s*)?@param:\\s*([a-zA-Z_][a-zA-Z0-9_]*)(.*)$"));
 
     // Sub-regexes to match key-value pairs
     QRegularExpression nameRegex(QString::fromUtf8("name\\s*=\\s*\"([^\"]*)\""));

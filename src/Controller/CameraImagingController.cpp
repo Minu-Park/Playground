@@ -6,47 +6,26 @@
 #include "Utility/Qt/QtConverter.h"
 #include <QPointer>
 #include <QDebug>
+#include <exception>
 
-#ifdef HAS_OPENCV
 namespace {
-cv::Mat convertPylonImageToMat(const CPylonImage& pylonImage) {
-    if (!pylonImage.IsValid()) return cv::Mat();
 
-    int width = (int)pylonImage.GetWidth();
-    int height = (int)pylonImage.GetHeight();
-    const void* buffer = pylonImage.GetBuffer();
-    auto pixelType = pylonImage.GetPixelType();
-    
-    if (pixelType == Pylon::PixelType_Mono8) {
-        return cv::Mat(height, width, CV_8UC1, const_cast<void*>(buffer)).clone();
-    } else if (pixelType == Pylon::PixelType_RGB8packed) {
-        cv::Mat rgbMat(height, width, CV_8UC3, const_cast<void*>(buffer));
-        cv::Mat bgrMat;
-        cv::cvtColor(rgbMat, bgrMat, cv::COLOR_RGB2BGR);
-        return bgrMat;
-    } else if (pixelType == Pylon::PixelType_BGR8packed) {
-        return cv::Mat(height, width, CV_8UC3, const_cast<void*>(buffer)).clone();
-    }
-    return cv::Mat();
-}
+class CameraReadyGuard {
+public:
+    explicit CameraReadyGuard(Camera* camera)
+        : _camera(camera) {}
 
-QImage convertMatToQImage(const cv::Mat& mat) {
-    if (mat.empty()) return QImage();
-    
-    if (mat.type() == CV_8UC1) {
-        QImage image(mat.data, mat.cols, mat.rows, (int)mat.step, QImage::Format_Grayscale8);
-        return image.copy();
-    } else if (mat.type() == CV_8UC3) {
-        QImage image(mat.data, mat.cols, mat.rows, (int)mat.step, QImage::Format_BGR888);
-        return image.copy();
-    } else if (mat.type() == CV_8UC4) {
-        QImage image(mat.data, mat.cols, mat.rows, (int)mat.step, QImage::Format_ARGB32);
-        return image.copy();
+    ~CameraReadyGuard() {
+        if (_camera) {
+            _camera->ready();
+        }
     }
-    return QImage();
-}
+
+private:
+    Camera* _camera = nullptr;
+};
+
 } // namespace
-#endif
 
 CameraImagingController::CameraImagingController(Camera* camera, QObject* parent)
     : AbstractImagingController(parent), _camera(camera) {
@@ -80,19 +59,6 @@ void CameraImagingController::setSink(GraphicsEngineSink* sink) {
     _sink = sink;
 }
 
-#ifdef HAS_OPENCV
-void CameraImagingController::setFilter(ProcessFunc filter) {
-    std::lock_guard<std::mutex> lock(_filterMutex);
-    _activeFilter = filter;
-}
-
-void CameraImagingController::setParameters(double p1, double p2) {
-    std::lock_guard<std::mutex> lock(_filterMutex);
-    _param1 = p1;
-    _param2 = p2;
-}
-#endif
-
 void CameraImagingController::registerCallbacks() {
     if (!_camera) return;
 
@@ -106,87 +72,74 @@ void CameraImagingController::registerCallbacks() {
     // 2. 2D Grab callback
     _grabCallbackId = _camera->registerGrabCallback(
         [this](const CPylonImage& pylonImage, size_t) {
+            Camera* camera = _camera;
+            CameraReadyGuard ready(camera);
+            if (!camera) {
+                return;
+            }
             if (!_sink) {
-                _camera->ready();
                 return;
             }
 
-            QImage image;
+            try {
+                QImage image = convertPylonImageToQImage(pylonImage);
 
-#ifdef HAS_OPENCV
-            ProcessFunc filter = nullptr;
-            double p1 = 0.0, p2 = 0.0;
-            {
-                std::lock_guard<std::mutex> lock(_filterMutex);
-                filter = _activeFilter;
-                p1 = _param1;
-                p2 = _param2;
-            }
+                if (!image.isNull()) {
+                    ProcessingFrame frame;
+                    frame.payload = std::move(image);
+                    frame.frameSeq = _frameSeq++;
 
-            if (filter) {
-                cv::Mat rawMat = convertPylonImageToMat(pylonImage);
-                if (!rawMat.empty()) {
-                    cv::Mat processedMat;
-                    try {
-                        filter(rawMat, processedMat, p1, p2);
-                        if (!processedMat.empty()) {
-                            image = convertMatToQImage(processedMat);
-                        }
-                    } catch (...) {
-                        // Fail-safe in case dynamic user code has segment faults / logic errors
+                    _pipeline.run(frame);
+
+                    if (std::holds_alternative<QImage>(frame.payload)) {
+                        _sink->enqueueImage(std::get<QImage>(frame.payload));
                     }
                 }
+            } catch (const std::exception& e) {
+                qWarning() << "[CameraImagingController] 2D frame processing failed:" << e.what();
+            } catch (...) {
+                qWarning() << "[CameraImagingController] 2D frame processing failed with an unknown exception.";
             }
-#endif
-
-            if (image.isNull()) {
-                image = convertPylonImageToQImage(pylonImage);
-            }
-
-            if (!image.isNull()) {
-                ProcessingFrame frame;
-                frame.payload = std::move(image);
-                frame.frameSeq = _frameSeq++;
-
-                _pipeline.run(frame);
-
-                if (std::holds_alternative<QImage>(frame.payload)) {
-                    _sink->enqueueImage(std::get<QImage>(frame.payload));
-                }
-            }
-            _camera->ready();
         });
 
     // 3. 3D Grab callback
     const PylonScene3DAdapter scene3DAdapter;
     _grab3DCallbackId = _camera->registerGrab3DCallback(
         [this, scene3DAdapter](const Pylon::CPylonDataContainer& container, size_t) {
+            Camera* camera = _camera;
+            CameraReadyGuard ready(camera);
+            if (!camera) {
+                return;
+            }
             if (!_sink) {
-                _camera->ready();
                 return;
             }
 
             GraphicsEngine* engine = _sink->engine();
             if (!engine) {
-                _camera->ready();
                 return;
             }
 
-            const GraphicsScene3DRequest request = engine->scene3DRequest();
-            const PylonScene3DProfile profile = _camera->scene3DProfile();
-            auto scene = scene3DAdapter.convert(container, request, profile);
-            if (scene.has_value()) {
-                ProcessingFrame frame;
-                frame.payload = std::move(*scene);
-                frame.frameSeq = _frameSeq++;
+            try {
+                const GraphicsScene3DRequest request = engine->scene3DRequest();
+                const PylonScene3DProfile profile = camera->scene3DProfile();
+                auto scene = scene3DAdapter.convert(container, request, profile);
+                if (scene.has_value()) {
+                    ProcessingFrame frame;
+                    frame.payload = std::move(*scene);
+                    frame.frameSeq = _frameSeq++;
 
-                _pipeline.run(frame);
+                    _pipeline.run(frame);
 
-                if (std::holds_alternative<GraphicsScene3D>(frame.payload)) {
-                    _sink->enqueueScene3D(std::move(std::get<GraphicsScene3D>(frame.payload)));
+                    if (std::holds_alternative<GraphicsScene3D>(frame.payload)) {
+                        _sink->enqueueScene3D(std::move(std::get<GraphicsScene3D>(frame.payload)));
+                    }
                 }
+            } catch (const std::exception& e) {
+                qWarning() << "[CameraImagingController] 3D frame processing failed:" << e.what();
+            } catch (...) {
+                qWarning() << "[CameraImagingController] 3D frame processing failed with an unknown exception.";
             }
-            _camera->ready();
         });
 }
 

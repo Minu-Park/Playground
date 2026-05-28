@@ -74,9 +74,8 @@ void StaticImageImagingController::removeImage(int index) {
         stop();
         _currentIndex = 0;
         emit currentIndexChanged(_currentIndex);
-        // Clear screen with a null/empty image if possible
         if (_sink) {
-            _sink->enqueueImage(QImage());
+            _sink->enqueueClear();
         }
     } else {
         if (_currentIndex >= _filePaths.size()) {

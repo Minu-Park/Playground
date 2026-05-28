@@ -15,7 +15,7 @@ Playground is a Qt host workspace for composing and testing the Camera, Gocator,
 - The host installs the `GraphicsEngine` QVTK/OpenGL default surface format before `QApplication`, so first session creation does not perform delayed global graphics setup.
 - `MainWindow` adds a transparent one-pixel OpenGL composition seed before its first show, so adding the first session does not introduce the top-level window's first OpenGL child on platforms affected by Qt's dynamic `QOpenGLWidget` insertion behavior.
 - Device control widgets are docked panels managed by the session.
-- `QProcessingWidget` is hosted in a hidden-by-default `Image Processing Pipeline` dock.
+- `QProcessingWidget` is hosted in a hidden-by-default `Image Processing Pipeline` dock; `DynamicProcessingCompiler` owns the OpenCV hot-swap compile plan and can use runtime paths configured from the filter script toolbar rather than requiring the host app to link OpenCV.
 - `CameraImagingController`, `GocatorImagingController`, and `StaticImageImagingController` own acquisition/session flow.
 - `GraphicsEngineSink` queues display updates back to the GUI thread.
 - Static image sessions can be created without hardware and populated from disk.

@@ -35,7 +35,8 @@
 - Users can add Basler Camera, LMI Gocator, or Test Image sessions as MDI subwindows.
 - The Window menu tiles visible, non-minimized MDI subwindows by their current spatial order so left-to-right placement stays predictable.
 - `MainWindow` creates `DeviceSession` subwindows and deletes them before `CameraSystem` destruction so device callbacks and camera ownership are cleaned up in order.
-- `LogManager` captures Qt logs plus redirected module `std::cout` and `std::cerr` logs into the System Logs dock and `lastlog.log`; `Gocator::syslog()` flushes each operation record for prompt forwarding.
+- `LogManager` captures Qt logs plus redirected module `std::cout` and `std::cerr` logs into the System Logs dock and an app-data `lastlog.log`; `Gocator::syslog()` flushes each operation record for prompt forwarding.
+- `RuntimeDependencyResolver` provides app-level path injection for runtime/build dependencies such as OpenCV, with system discovery as the default fallback.
 - Camera and Gocator status labels use the shared Resources `status` property map for `Idle`, `Disconnected`, `Connected`, and `Live`.
 - `QGocatorWidget` keeps operation feedback local to its status bar: grab messages follow requested and callback-confirmed transitions, while parameter messages identify asynchronous update submissions.
 - Test Image tool buttons, FPS input, and list selection use compact neutral styling owned by `modules/Resources`.
@@ -50,7 +51,7 @@
 - `QProcessingWidget` lives in a right-side `Image Processing Pipeline` dock, hidden by default, and exposes one hot-swappable OpenCV script node with parsed parameters.
 - The `View` menu exposes text dock toggles for the control and processing panels.
 - Hiding a control or processing panel does not stop acquisition.
-- `GraphicsEngineSink` queues display calls to the local `GraphicsEngine`.
+- `GraphicsEngineSink` queues display and explicit clear calls to the local `GraphicsEngine`.
 
 ## Imaging Controllers
 - `AbstractImagingController` defines the session lifecycle interface.
@@ -58,7 +59,8 @@
 - `GocatorImagingController` owns Gocator callback registration, pipeline execution, and display sink binding.
 - `StaticImageImagingController` owns file list playback, FPS timing, pipeline execution, and display sink binding.
 - `ProcessingPipeline` owns ordered processing node instances.
-- `QProcessingWidget` owns the currently exposed single `process_image` hot-swap node.
+- `QProcessingWidget` owns the currently exposed single `process_image` hot-swap node UI and opens the OpenCV runtime path dialog from the filter script toolbar.
+- `DynamicProcessingCompiler` owns generated source, compiler arguments, output artifact paths, and the OpenCV build environment for the hot-swap node.
 - `DynamicLibraryLoader` keeps the installed processing library mapped while frames can invoke it.
 
 ## Data Flow
@@ -68,7 +70,7 @@
 - Camera Stereo ace color 3D frames use `Intensity/RGB8` plus `Disparity/Coord3D_C16` and captured calibration values to produce neutral scene data.
 - `GraphicsScene3D` can carry a color image and registration metadata; organized `RangeFrame::rgb` feeds color point-cloud generation without storing live point-cloud buffers in the engine state.
 - Gocator data sets convert through `GocatorDataSetScene3DAdapter`, pass through `ProcessingPipeline`, then enqueue to `GraphicsEngine::setScene3D`.
-- Static images load from disk as `QImage`, pass through `ProcessingPipeline`, then enqueue to `GraphicsEngine::setImage`.
+- Static images load from disk as `QImage`, pass through `ProcessingPipeline`, then enqueue to `GraphicsEngine::setImage`; removing the last image queues an explicit display clear.
 - Device callbacks originate outside the GUI thread. Display updates must stay queued to the GUI thread.
 
 ## Boundaries

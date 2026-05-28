@@ -14,6 +14,7 @@ public:
 
     void enqueueImage(const QImage& image);
     void enqueueScene3D(GraphicsScene3D&& scene);
+    void enqueueClear();
 
     GraphicsEngine* engine() const;
 

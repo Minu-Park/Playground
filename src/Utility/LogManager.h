@@ -24,7 +24,7 @@ private:
     LogManager(QObject* parent = nullptr);
     ~LogManager() override;
 
-    void writeToLogFile();
+    void appendToLogFile(const QString& line);
 
     QQueue<QString> _logBuffer;
     QMutex _mutex;

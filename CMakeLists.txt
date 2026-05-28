@@ -46,10 +46,14 @@ qt_add_executable(Playground
     src/MainWindow.cpp
     src/DeviceSession.cpp
     src/UI/QProcessingWidget.cpp
+    src/UI/RuntimePathsDialog.h
+    src/UI/RuntimePathsDialog.cpp
     src/UI/QStaticImageControlWidget.cpp
     src/Utility/LogManager.cpp
     src/Utility/ParameterParser.h
     src/Utility/ParameterParser.cpp
+    src/Utility/RuntimeDependencyResolver.h
+    src/Utility/RuntimeDependencyResolver.cpp
     src/Controller/AbstractImagingController.h
     src/Controller/GraphicsEngineSink.h
     src/Controller/GraphicsEngineSink.cpp
@@ -62,6 +66,8 @@ qt_add_executable(Playground
     src/Pipeline/ProcessingFrame.h
     src/Pipeline/ProcessingPipeline.h
     src/Pipeline/ProcessingPipeline.cpp
+    src/Pipeline/DynamicProcessingCompiler.h
+    src/Pipeline/DynamicProcessingCompiler.cpp
     src/Pipeline/DynamicLibraryLoader.h
     src/Pipeline/DynamicLibraryLoader.cpp
 )
@@ -93,6 +99,9 @@ endif()
 
 target_compile_definitions(Playground PRIVATE
     PLAYGROUND_SRC_DIR="${CMAKE_CURRENT_LIST_DIR}/src"
+    PLAYGROUND_CXX_COMPILER="${CMAKE_CXX_COMPILER}"
+    PLAYGROUND_CXX_COMPILER_ID="${CMAKE_CXX_COMPILER_ID}"
+    PLAYGROUND_SHARED_LIBRARY_SUFFIX="${CMAKE_SHARED_LIBRARY_SUFFIX}"
 )
 
 if(POLICY CMP0146)
@@ -101,8 +110,7 @@ if(POLICY CMP0146)
 endif()
 find_package(OpenCV QUIET)
 if(OpenCV_FOUND)
-    message(STATUS "[Playground] OpenCV found. Enabling live image processing pipeline.")
-    target_compile_definitions(Playground PRIVATE HAS_OPENCV)
+    message(STATUS "[Playground] OpenCV found. Using it as the default live processing build environment.")
 
     get_filename_component(OPENCV_LIB_DIR "${OpenCV_DIR}/../.." ABSOLUTE)
 
@@ -110,9 +118,6 @@ if(OpenCV_FOUND)
         OPENCV_INCLUDE_DIR="${OpenCV_INCLUDE_DIRS}"
         OPENCV_LIB_DIR="${OPENCV_LIB_DIR}"
     )
-
-    target_include_directories(Playground PRIVATE ${OpenCV_INCLUDE_DIRS})
-    target_link_libraries(Playground PRIVATE ${OpenCV_LIBRARIES})
 else()
-    message(WARNING "[Playground] OpenCV NOT found. Live image processing pipeline will be disabled.")
+    message(STATUS "[Playground] OpenCV NOT found at configure time. Live processing can still use a runtime-provided OpenCV path.")
 endif()

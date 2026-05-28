@@ -1,10 +1,11 @@
 #include "UI/QProcessingWidget.h"
 #include "Utility/ParameterParser.h"
 #include "Controller/AbstractImagingController.h"
+#include "Pipeline/DynamicProcessingCompiler.h"
 #include "Pipeline/DynamicLibraryLoader.h"
 #include "Pipeline/ProcessingPipeline.h"
+#include "UI/RuntimePathsDialog.h"
 #include <mutex>
-#include <QDateTime>
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -20,7 +21,6 @@
 #include <QTextEdit>
 #include <QFile>
 #include <QTextStream>
-#include <QCoreApplication>
 #include <QDir>
 #include <QPalette>
 #include <QFont>
@@ -33,6 +33,8 @@
 #include <QSyntaxHighlighter>
 #include <QRegularExpression>
 #include <QStringListModel>
+#include <QStandardPaths>
+#include <QUuid>
 
 
 
@@ -168,8 +170,7 @@ public:
         words.removeDuplicates();
         words.sort();
 
-#ifdef HAS_OPENCV
-        QString incDir = QString::fromLocal8Bit(OPENCV_INCLUDE_DIR);
+        const QString incDir = OpenCvBuildEnvironment::fromBuildDefaults().includeDir;
         QStringList opencvWords;
 
         auto parseHeader = [&](const QString& filePath) {
@@ -208,16 +209,16 @@ public:
             }
         };
 
-        parseHeader(incDir + QStringLiteral("/opencv2/core.hpp"));
-        parseHeader(incDir + QStringLiteral("/opencv2/imgproc.hpp"));
+        if (!incDir.isEmpty()) {
+            parseHeader(incDir + QStringLiteral("/opencv2/core.hpp"));
+            parseHeader(incDir + QStringLiteral("/opencv2/imgproc.hpp"));
+        }
 
         if (!opencvWords.isEmpty()) {
             words.append(opencvWords);
             words.removeDuplicates();
             words.sort();
         }
-#endif
-
         _defaultWords = words;
 
         // Initialize cv::Mat member list
@@ -249,6 +250,7 @@ public:
                 this, &QCodeEditor::insertCompletion);
 
         _highlighter = new CppHighlighter(document());
+        connect(this, &QTextEdit::textChanged, this, &QCodeEditor::updateAutocompleteWords);
     }
 
     void setCompleter(QCompleter* completer) {
@@ -290,8 +292,9 @@ protected:
         tcLine.movePosition(QTextCursor::StartOfLine, QTextCursor::KeepAnchor);
         QString lineText = tcLine.selectedText();
 
-        // Check if cursor is after a cv::Mat variable (e.g. img, gray, blurred, edges, mat) followed by a dot
-        QRegularExpression matMemberRegex(QStringLiteral("(?:img|mat|gray|blurred|edges)\\.(\\w*)$"));
+        // Check if cursor is after a cv::Mat variable followed by a dot
+        QString pattern = QStringLiteral("(?:") + _matVariables.join(QStringLiteral("|")) + QStringLiteral(")\\.(\\w*)$");
+        QRegularExpression matMemberRegex(pattern);
         QRegularExpressionMatch match = matMemberRegex.match(lineText);
 
         if (match.hasMatch()) {
@@ -356,16 +359,7 @@ protected:
 public:
     void setCustomWords(const QStringList& words) {
         _customWords = words;
-        _combinedWords = _defaultWords + _customWords;
-        _combinedWords.removeDuplicates();
-        _combinedWords.sort();
-
-        if (_completer) {
-            QStringListModel* model = qobject_cast<QStringListModel*>(_completer->model());
-            if (model) {
-                model->setStringList(_combinedWords);
-            }
-        }
+        updateAutocompleteWords();
     }
 
 private:
@@ -395,12 +389,68 @@ private:
         return word;
     }
 
+    void updateAutocompleteWords() {
+        QString code = toPlainText();
+        QStringList customWords = _customWords; // Keep the parameter custom words set externally
+
+        // Extract cv::Mat variables
+        QStringList matVars;
+        QRegularExpression matRegex(QStringLiteral("\\bcv::Mat\\s+([^;]+);"));
+        QRegularExpressionMatchIterator matIt = matRegex.globalMatch(code);
+        while (matIt.hasNext()) {
+            QRegularExpressionMatch match = matIt.next();
+            QString decls = match.captured(1);
+            QStringList parts = decls.split(QStringLiteral(","));
+            for (const QString& part : parts) {
+                QString var = part.split(QStringLiteral("=")).first().trimmed();
+                QRegularExpression idRegex(QStringLiteral("^[a-zA-Z_][a-zA-Z0-9_]*$"));
+                if (idRegex.match(var).hasMatch()) {
+                    customWords << var;
+                    matVars << var;
+                }
+            }
+        }
+
+        // Extract standard data types
+        QRegularExpression typeRegex(QStringLiteral("\\b(int|double|float|bool|auto|char|size_t)\\s+([^;]+);"));
+        QRegularExpressionMatchIterator typeIt = typeRegex.globalMatch(code);
+        while (typeIt.hasNext()) {
+            QRegularExpressionMatch match = typeIt.next();
+            QString decls = match.captured(2);
+            QStringList parts = decls.split(QStringLiteral(","));
+            for (const QString& part : parts) {
+                QString var = part.split(QStringLiteral("=")).first().trimmed();
+                QRegularExpression idRegex(QStringLiteral("^[a-zA-Z_][a-zA-Z0-9_]*$"));
+                if (idRegex.match(var).hasMatch()) {
+                    customWords << var;
+                }
+            }
+        }
+
+        _matVariables = matVars;
+        // Add default image/mat variables
+        _matVariables << QStringLiteral("img") << QStringLiteral("gray") << QStringLiteral("blurred") << QStringLiteral("edges") << QStringLiteral("mat");
+        _matVariables.removeDuplicates();
+
+        _combinedWords = _defaultWords + customWords;
+        _combinedWords.removeDuplicates();
+        _combinedWords.sort();
+
+        if (_completer) {
+            QStringListModel* model = qobject_cast<QStringListModel*>(_completer->model());
+            if (model) {
+                model->setStringList(_combinedWords);
+            }
+        }
+    }
+
     QCompleter* _completer = nullptr;
     CppHighlighter* _highlighter = nullptr;
     QStringList _defaultWords;
     QStringList _customWords;
     QStringList _combinedWords;
     QStringList _matMembers;
+    QStringList _matVariables;
 };
 
 using ProcessImageFunc = void (*)(unsigned char*, int, int, int, int, const double*, int);
@@ -413,6 +463,11 @@ public:
             { QStringLiteral("Parameter 2"), 1.0, 250.0, 50.0, 0 }
         };
         _paramValues = { 5.0, 50.0 };
+    }
+
+    bool isLoaded() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _func != nullptr;
     }
 
     QString name() const override { return QStringLiteral("OpenCV Filter Script"); }
@@ -495,6 +550,17 @@ private:
 
 QProcessingWidget::QProcessingWidget(QWidget* parent)
     : QWidget(parent) {
+    QString scratchRoot = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+    if (scratchRoot.isEmpty()) {
+        scratchRoot = QDir::tempPath();
+    }
+    const QString sessionId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    _scratchDir = QDir(scratchRoot).filePath(QStringLiteral("Playground/processing/%1").arg(sessionId));
+    QString autosaveRoot = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    if (autosaveRoot.isEmpty()) {
+        autosaveRoot = QDir::tempPath();
+    }
+    _autosaveDir = QDir(autosaveRoot).filePath(QStringLiteral("processing/autosave"));
     _scriptNode = std::make_shared<DynamicWrapperNode>();
     _scriptNode->setEnabled(true);
     initUI();
@@ -612,32 +678,7 @@ void QProcessingWidget::initUI() {
     headerLayout->addWidget(_enableToggleBtn);
     _mainLayout->addWidget(headerFrame);
 
-    // 2. Filter Parameters Group Box
-    auto* paramGroup = new QGroupBox(QStringLiteral("Filter Parameters"), this);
-    paramGroup->setStyleSheet(QStringLiteral(
-        "QGroupBox {"
-        "  font-weight: bold;"
-        "  color: #354657;"
-        "  border: 1px solid #d9e1ea;"
-        "  border-radius: 10px;"
-        "  margin-top: 0px;"
-        "  padding: 10px;"
-        "  background-color: #ffffff;"
-        "}"
-        "QGroupBox::title {"
-        "  subcontrol-origin: margin;"
-        "  left: 12px;"
-        "  padding: 0 4px;"
-        "}"
-    ));
-    _paramLayout = new QVBoxLayout(paramGroup);
-    _paramLayout->setContentsMargins(8, 14, 8, 8);
-    _paramLayout->setSpacing(8);
-
-    _mainLayout->addWidget(paramGroup); // Added vertically
-
-    // 3. Editor Title & Editor
-#ifdef HAS_OPENCV
+    // 2. Editor Title & Editor (Moved above Parameters)
     QHBoxLayout* editorHeaderLayout = new QHBoxLayout();
     editorHeaderLayout->setContentsMargins(0, 0, 0, 0);
 
@@ -645,6 +686,34 @@ void QProcessingWidget::initUI() {
     editorTitle->setStyleSheet(QStringLiteral("font-weight: 600; color: #4a5a6a;"));
     editorHeaderLayout->addWidget(editorTitle);
     editorHeaderLayout->addStretch(1);
+
+    _runtimePathsButton = new QPushButton(this);
+    _runtimePathsButton->setIcon(QIcon(QStringLiteral(":/Resources/Icons/icons8-setting-48.png")));
+    _runtimePathsButton->setToolTip(QStringLiteral("OpenCV runtime paths"));
+    _runtimePathsButton->setStyleSheet(
+        "QPushButton {"
+        "  background-color: #ffffff;"
+        "  color: #16202b;"
+        "  border: 1px solid #cfd9e4;"
+        "  border-radius: 8px;"
+        "  padding: 4px 8px;"
+        "  min-height: 22px;"
+        "  max-height: 22px;"
+        "}"
+        "QPushButton:hover {"
+        "  background-color: #f8fafc;"
+        "  border-color: #b8c6d5;"
+        "}"
+        "QPushButton:pressed {"
+        "  background-color: #f1f5f9;"
+        "  border-color: #9fb7cf;"
+        "}"
+    );
+    connect(_runtimePathsButton, &QPushButton::clicked, this, [this]() {
+        RuntimePathsDialog dialog(this);
+        dialog.exec();
+    });
+    editorHeaderLayout->addWidget(_runtimePathsButton);
 
     _compileButton = new QPushButton(QStringLiteral("Compile & Apply Hot-Swap"), this);
     _compileButton->setIcon(QIcon(QStringLiteral(":/Resources/Icons/icons8-refresh-48.png")));
@@ -685,12 +754,8 @@ void QProcessingWidget::initUI() {
     _codeEditor->setMinimumHeight(150);
     _codeEditor->setStyleSheet(QStringLiteral("QTextEdit { background-color: #ffffff; color: #1e293b; border: 1px solid #cfd9e4; border-radius: 8px; padding: 6px; }"));
 
-    // Prepopulate with script-style template code
+    // Template code (now without parameter comments)
     QString templateCode =
-        "// Define parameters (auto-parsed to build UI sliders):\n"
-        "// @param: kSize, name=\"Kernel Size\", min=1, max=21, default=5\n"
-        "// @param: lowThresh, name=\"Canny Low\", min=10, max=150, default=50\n"
-        "//\n"
         "// Available variables:\n"
         "//   cv::Mat img       - The raw image to process (BGRA, BGR, or Grayscale)\n"
         "//   int width, height - Dimensions of the image\n"
@@ -718,12 +783,44 @@ void QProcessingWidget::initUI() {
         "} else {\n"
         "    edges.copyTo(img);\n"
         "}\n";
-    _codeEditor->setPlainText(templateCode);
+
     _mainLayout->addWidget(_codeEditor, 1);
 
-    // Dynamic autocomplete update based on custom parameter names
-    connect(_codeEditor, &QTextEdit::textChanged, this, [this]() {
-        auto parsed = ParameterParser::parseCode(_codeEditor->toPlainText());
+    // 3. Filter Parameters Container (No Group Box)
+    auto* paramContainer = new QWidget(this);
+    auto* paramContainerLayout = new QVBoxLayout(paramContainer);
+    paramContainerLayout->setContentsMargins(0, 0, 0, 0);
+    paramContainerLayout->setSpacing(6);
+
+    // 3a. Parameter Definitions Title & Editor
+    auto* paramEditorTitle = new QLabel(QStringLiteral("Parameter Definitions:"), paramContainer);
+    paramEditorTitle->setStyleSheet(QStringLiteral("font-weight: 600; color: #4a5a6a; font-size: 11px;"));
+    paramContainerLayout->addWidget(paramEditorTitle);
+
+    _paramEditor = new QTextEdit(paramContainer);
+    _paramEditor->setMinimumHeight(60);
+    _paramEditor->setMaximumHeight(90);
+    _paramEditor->setPlaceholderText(QStringLiteral("@param: varName, name=\"Display Name\", min=0, max=100, default=50\n@param: ..."));
+    _paramEditor->setStyleSheet(QStringLiteral("QTextEdit { background-color: #ffffff; color: #1e293b; border: 1px solid #cfd9e4; border-radius: 8px; padding: 4px; font-family: Courier New; font-size: 11px; }"));
+
+    // Default template parameters
+    QString templateParams =
+        "@param: kSize, name=\"Kernel Size\", min=1, max=21, default=5\n"
+        "@param: lowThresh, name=\"Canny Low\", min=10, max=150, default=50\n";
+
+    paramContainerLayout->addWidget(_paramEditor);
+
+    // 3b. Dynamic Sliders Layout
+    _paramLayout = new QVBoxLayout();
+    _paramLayout->setContentsMargins(0, 4, 0, 0);
+    _paramLayout->setSpacing(8);
+    paramContainerLayout->addLayout(_paramLayout);
+
+    _mainLayout->addWidget(paramContainer);
+
+    // Connect paramEditor textChanged to parse parameters dynamically and update autocompleter
+    connect(_paramEditor, &QTextEdit::textChanged, this, [this]() {
+        auto parsed = ParameterParser::parseCode(_paramEditor->toPlainText());
         QStringList customWords;
         for (const auto& p : parsed) {
             if (!p.varName.isEmpty()) {
@@ -731,17 +828,56 @@ void QProcessingWidget::initUI() {
             }
         }
         _codeEditor->setCustomWords(customWords);
+        refreshParameterUI();
     });
 
-    // Parse once initially
-    emit _codeEditor->textChanged();
-#else
-    auto* noOpenCVLabel = new QLabel(
-        QStringLiteral("OpenCV is not enabled. C++ live compilation is disabled."), this);
-    noOpenCVLabel->setStyleSheet(QStringLiteral("color: #cc6600; font-weight: bold; font-size: 12px; padding: 12px; border: 1px dashed #cc6600; border-radius: 8px;"));
-    noOpenCVLabel->setAlignment(Qt::AlignCenter);
-    _mainLayout->addWidget(noOpenCVLabel, 1);
-#endif
+    // Try loading saved temp code or set template code
+    QString tempPath = getAutosaveDir() + QStringLiteral("/dynamic_filter_temp.cpp");
+    QFile tempFile(tempPath);
+    if (tempFile.exists() && tempFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QTextStream in(&tempFile);
+        _codeEditor->setPlainText(in.readAll());
+        tempFile.close();
+    } else {
+        _codeEditor->setPlainText(templateCode);
+    }
+
+    // Try loading saved temp params or set template params
+    QString tempParamsPath = getAutosaveDir() + QStringLiteral("/dynamic_filter_temp_params.txt");
+    QFile tempParamsFile(tempParamsPath);
+    if (tempParamsFile.exists() && tempParamsFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QTextStream in(&tempParamsFile);
+        _paramEditor->setPlainText(in.readAll());
+        tempParamsFile.close();
+    } else {
+        _paramEditor->setPlainText(templateParams);
+    }
+
+    // Connect textChanged slots for auto saving
+    connect(_codeEditor, &QTextEdit::textChanged, this, [this]() {
+        QString autosaveDir = getAutosaveDir();
+        QDir().mkpath(autosaveDir);
+        QFile file(autosaveDir + QStringLiteral("/dynamic_filter_temp.cpp"));
+        if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            QTextStream out(&file);
+            out << _codeEditor->toPlainText();
+            file.close();
+        }
+    });
+
+    connect(_paramEditor, &QTextEdit::textChanged, this, [this]() {
+        QString autosaveDir = getAutosaveDir();
+        QDir().mkpath(autosaveDir);
+        QFile file(autosaveDir + QStringLiteral("/dynamic_filter_temp_params.txt"));
+        if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            QTextStream out(&file);
+            out << _paramEditor->toPlainText();
+            file.close();
+        }
+    });
+
+    // Trigger parsing once initially
+    emit _paramEditor->textChanged();
 }
 
 void QProcessingWidget::refreshParameterUI() {
@@ -780,6 +916,18 @@ void QProcessingWidget::refreshParameterUI() {
     }
 
     if (!_scriptNode) return;
+
+    if (!_scriptNode->isLoaded()) {
+        auto* waitLabel = new QLabel(QStringLiteral("Compile and apply the filter to configure parameters."), this);
+        waitLabel->setStyleSheet(QStringLiteral("color: #64748b; font-style: italic; padding: 6px; font-size: 11px;"));
+        _paramLayout->addWidget(waitLabel);
+
+        ParameterControl ctrl;
+        ctrl.index = -1;
+        ctrl.nameLabel = waitLabel;
+        _dynamicControls.push_back(ctrl);
+        return;
+    }
 
     // 2. Fetch parameters specs from the node
     auto specs = _scriptNode->parameterSpecs();
@@ -908,52 +1056,36 @@ void QProcessingWidget::updatePipelineInController() {
 }
 
 QString QProcessingWidget::getScratchDir() const {
-    return QCoreApplication::applicationDirPath() + QStringLiteral("/scratch");
+    return _scratchDir;
+}
+
+QString QProcessingWidget::getAutosaveDir() const {
+    return _autosaveDir;
 }
 
 void QProcessingWidget::handleCompile() {
-#ifdef HAS_OPENCV
     if (!_codeEditor || !_compileButton) return;
 
     _compileButton->setEnabled(false);
     _compileButton->setText(QStringLiteral("Compiling..."));
     qInfo() << "[Pipeline] Saving dynamic filter script...";
 
-    QString scratchDir = getScratchDir();
-    QDir().mkpath(scratchDir);
+    DynamicProcessingCompileRequest request;
+    request.scriptCode = _codeEditor->toPlainText();
+    request.parameters = ParameterParser::parseCode(_paramEditor->toPlainText());
+    request.scratchDir = getScratchDir();
 
-    QString filePath = scratchDir + QStringLiteral("/dynamic_filter.cpp");
-    QFile file(filePath);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        qCritical() << "[Pipeline] [Error] Failed to create dynamic_filter.cpp";
+    DynamicProcessingCompilePlan plan;
+    QString error;
+    const OpenCvBuildEnvironment environment = OpenCvBuildEnvironment::fromBuildDefaults();
+    if (!DynamicProcessingCompiler::prepareOpenCvProcessImageBuild(environment, request, &plan, &error)) {
+        qCritical() << "[Pipeline] [Error]" << error;
         _compileButton->setEnabled(true);
         _compileButton->setText(QStringLiteral("Compile & Apply Hot-Swap"));
         return;
     }
 
-    QTextStream out(&file);
-    out << "#include <opencv2/opencv.hpp>\n"
-        << "#include <algorithm>\n\n"
-        << "extern \"C\" {\n"
-        << "    void process_image(unsigned char* data, int width, int height, int channels, int step, const double* params, int paramCount) {\n";
-
-    auto parsed = ParameterParser::parseCode(_codeEditor->toPlainText());
-    for (size_t i = 0; i < parsed.size(); ++i) {
-        const auto& p = parsed[i];
-        out << "        double " << p.varName << " = (paramCount > " << i << ") ? params[" << i << "] : " << p.defaultValue << ";\n";
-    }
-
-    out << "\n"
-        << "        int type = (channels == 4) ? CV_8UC4 : ((channels == 3) ? CV_8UC3 : CV_8UC1);\n"
-        << "        cv::Mat img(height, width, type, data, step);\n\n"
-        << "        // USER SCRIPT START\n"
-        << _codeEditor->toPlainText() << "\n"
-        << "        // USER SCRIPT END\n"
-        << "    }\n"
-        << "}\n";
-    file.close();
-
-    qInfo() << "[Pipeline] Launching clang++...";
+    qInfo() << "[Pipeline] Launching compiler:" << plan.compilerPath;
 
     if (_compiler) {
         _compiler->kill();
@@ -961,54 +1093,24 @@ void QProcessingWidget::handleCompile() {
     }
 
     _compiler = new QProcess(this);
-    _compiler->setWorkingDirectory(scratchDir);
+    _compiler->setWorkingDirectory(plan.workingDirectory);
 
-    QStringList arguments;
-    arguments << QStringLiteral("-O2")
-              << QStringLiteral("-shared")
-              << QStringLiteral("-fPIC")
-              << QStringLiteral("-std=c++20");
+    // Set library path property to retrieve it asynchronously upon completion
+    _compiler->setProperty("libraryPath", plan.outputPath);
 
-    // Add OpenCV headers
-    QString incDir = QString::fromLocal8Bit(OPENCV_INCLUDE_DIR);
-    arguments << QStringLiteral("-I") + incDir;
-
-    // Add project src directory so compiled node can include ProcessingPipeline.h
-    arguments << QStringLiteral("-I") + QStringLiteral(PLAYGROUND_SRC_DIR);
-
-    // Add OpenCV library path
-    QString libDir = QString::fromLocal8Bit(OPENCV_LIB_DIR);
-    arguments << QStringLiteral("-L") + libDir;
-    arguments << QStringLiteral("-lopencv_core") << QStringLiteral("-lopencv_imgproc");
-
-    // Generate a unique library name using current timestamp to avoid OS dlopen cache issues
-    qint64 timestamp = QDateTime::currentMSecsSinceEpoch();
-    QString dylibName = QStringLiteral("libdynamic_filter_%1.dylib").arg(timestamp);
-    QString dylibPath = scratchDir + QStringLiteral("/") + dylibName;
-
-    // Set dylibPath property to retrieve it asynchronously upon completion
-    _compiler->setProperty("dylibPath", dylibPath);
-
-    // Input / Output files
-    arguments << QStringLiteral("dynamic_filter.cpp")
-              << QStringLiteral("-o")
-              << dylibName;
-
-    qInfo() << "[Pipeline] Command: clang++" << arguments.join(QStringLiteral(" "));
+    qInfo() << "[Pipeline] Command:" << plan.compilerPath << plan.arguments.join(QStringLiteral(" "));
 
     connect(_compiler, &QProcess::finished, this, &QProcessingWidget::handleCompilerFinished);
-    _compiler->start(QStringLiteral("clang++"), arguments);
-#endif
+    _compiler->start(plan.compilerPath, plan.arguments);
 }
 
 void QProcessingWidget::handleCompilerFinished(int exitCode, QProcess::ExitStatus exitStatus) {
-#ifdef HAS_OPENCV
     _compileButton->setEnabled(true);
     _compileButton->setText(QStringLiteral("Compile & Apply Hot-Swap"));
 
     QProcess* proc = qobject_cast<QProcess*>(sender());
     if (!proc) return;
-    QString dylibPath = proc->property("dylibPath").toString();
+    QString libraryPath = proc->property("libraryPath").toString();
 
     if (exitStatus == QProcess::CrashExit) {
         qCritical() << "[Pipeline] [Error] Compiler process crashed!";
@@ -1017,13 +1119,12 @@ void QProcessingWidget::handleCompilerFinished(int exitCode, QProcess::ExitStatu
 
     if (exitCode == 0) {
         qInfo() << "[Pipeline] [Success] Compilation succeeded!";
-        loadDynamicNode(dylibPath);
+        loadDynamicNode(libraryPath);
     } else {
         QString errStr = QString::fromLocal8Bit(proc->readAllStandardError());
         qCritical() << "[Pipeline] [Failed] Compilation failed with code" << exitCode;
         qWarning() << "[Pipeline] Compiler output:\n" << errStr;
     }
-#endif
 }
 
 void QProcessingWidget::loadDynamicNode(const QString& dylibPath) {
@@ -1047,8 +1148,8 @@ void QProcessingWidget::loadDynamicNode(const QString& dylibPath) {
     // Keep the installed function's library mapped through the persistent node.
     if (_scriptNode) {
         std::vector<ParameterSpec> newSpecs;
-        if (_codeEditor) {
-            auto parsed = ParameterParser::parseCode(_codeEditor->toPlainText());
+        if (_paramEditor) {
+            auto parsed = ParameterParser::parseCode(_paramEditor->toPlainText());
             for (const auto& p : parsed) {
                 newSpecs.push_back({ p.displayName, p.minValue, p.maxValue, p.defaultValue, p.decimals });
             }

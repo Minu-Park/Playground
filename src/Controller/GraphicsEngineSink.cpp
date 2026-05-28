@@ -24,6 +24,15 @@ void GraphicsEngineSink::enqueueScene3D(GraphicsScene3D&& scene) {
     }, Qt::QueuedConnection);
 }
 
+void GraphicsEngineSink::enqueueClear() {
+    QPointer<GraphicsEngine> target = _engine;
+    QMetaObject::invokeMethod(this, [target]() {
+        if (!target.isNull() && target->isVisible()) {
+            target->clearData();
+        }
+    }, Qt::QueuedConnection);
+}
+
 GraphicsEngine* GraphicsEngineSink::engine() const {
     return _engine.data();
 }

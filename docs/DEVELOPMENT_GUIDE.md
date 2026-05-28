@@ -73,14 +73,37 @@ git -C modules/Resources diff --check
 - `GraphicsEngine` is the session central widget and remains visualization-only.
 - Device control dock visibility must not change acquisition state.
 - Camera, Gocator, and Static Image sessions are routed through imaging controllers.
-- `GraphicsEngineSink` owns GUI-thread display enqueue.
+- `GraphicsEngineSink` owns GUI-thread display enqueue and explicit display clear.
 - Camera 3D routing uses a pylon family profile and `PylonScene3DAdapter`: Blaze compatibility, Stereo mini direct XYZ/color mapping, and Stereo ace disparity/calibration conversion compile in the baseline.
 - `GraphicsEngine` neutral scene contract preserves optional color images, registration metadata, and organized RGB for color point clouds.
 - `Resources` owns reusable QSS and assets.
 - `QGocatorWidget` reports callback-confirmed grab transitions and asynchronous parameter update submissions in its local status bar.
 - `Gocator::syslog()` flushes operation records for immediate host-side redirected logging.
+- `LogManager` writes `lastlog.log` under the app data location and appends each line instead of rewriting the rolling UI buffer.
 - Test Image control sizing and neutral selection styling remain in `modules/Resources/Style.qss`.
-- OpenCV is optional; when CMake finds it, `HAS_OPENCV` enables the single `process_image` live compilation path. Cross-platform compiler and shared-library policy remain unresolved.
+- OpenCV is optional for the host build. `QProcessingWidget` always builds, while `DynamicProcessingCompiler` resolves OpenCV compile paths from configured runtime paths, app-local runtime paths, or CMake-discovered defaults.
+
+## Runtime Paths
+- Default behavior prefers system-discovered SDK paths when available.
+- Runtime overrides are allowed for deployment and machine-specific SDK layouts.
+- Users can edit OpenCV overrides from the settings button beside the OpenCV filter script compile button.
+- OpenCV live compilation path resolution checks, in order: `QSettings`, environment variables, app-local runtime folders, then CMake defaults.
+- OpenCV compiler path must point to a C++ compiler driver such as `clang++`, `g++`, or `c++`; C drivers such as `clang` do not link the C++ runtime.
+- OpenCV `QSettings` keys:
+  - `RuntimePaths/OpenCV/CompilerPath`
+  - `RuntimePaths/OpenCV/IncludeDir`
+  - `RuntimePaths/OpenCV/LibraryDir`
+  - `RuntimePaths/OpenCV/Libraries`
+- OpenCV environment variables:
+  - `PLAYGROUND_OPENCV_COMPILER`
+  - `PLAYGROUND_OPENCV_INCLUDE_DIR`
+  - `PLAYGROUND_OPENCV_LIB_DIR`
+  - `PLAYGROUND_OPENCV_LIBS`
+- App-local OpenCV candidates:
+  - `<appDir>/runtime/opencv/include`
+  - `<appDir>/runtime/opencv/lib`
+  - `<appDir>/runtime/OpenCV/include`
+  - `<appDir>/runtime/OpenCV/lib`
 
 ## Current Priority
 - Keep Camera/Gocator lifecycle cleanup stable on window close and app quit.
@@ -88,8 +111,15 @@ git -C modules/Resources diff --check
 - Preserve Camera `ready()` based live-frame admission.
 - Validate Basler Stereo mini and Stereo ace hardware against the implemented color Scene3D baseline, then add IR/profile UX and any capability gaps defined in `docs/STEREO_3D_CAMERA_INTEGRATION.md`.
 - Keep module changes inside each module repo and report module git status separately.
-- Resolve the structural review items before broadening the processing pipeline.
+- Follow the implementation checklist in `docs/STRUCTURAL_REVIEW.md` before broadening the processing pipeline.
 - Validate UI and lifecycle changes with the smallest viable parent configure/build.
+
+## Next Structural Sequence
+1. Generalize runtime path policy for pylon and GoPxL/Gocator SDKs.
+2. Add explicit runtime diagnostics UI/logging for missing pylon, GoPxL, and OpenCV paths.
+3. Document `process_image` ABI v1 inputs, ownership, channel format, and compatibility rules.
+4. Decide whether multi-node processing uses ABI v1 as a per-node wrapper or needs a new plugin ABI.
+5. Add manual platform validation notes for macOS/Linux/Windows OpenCV compile/load paths.
 
 ## Imaging Controller Work Order
 1. Keep `AbstractImagingController`, `CameraImagingController`, `GocatorImagingController`, and `StaticImageImagingController` as the acquisition/session boundary.

@@ -1,9 +1,10 @@
 #include "Utility/LogManager.h"
-#include <QCoreApplication>
 #include <QDateTime>
+#include <QDir>
 #include <QFile>
 #include <QTextStream>
 #include <QMutexLocker>
+#include <QStandardPaths>
 #include <QDebug>
 #include <iostream>
 #include <streambuf>
@@ -63,7 +64,12 @@ LogManager* LogManager::instance() {
 }
 
 LogManager::LogManager(QObject* parent) : QObject(parent) {
-    _logFilePath = QCoreApplication::applicationDirPath() + "/lastlog.log";
+    QString logRoot = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    if (logRoot.isEmpty()) {
+        logRoot = QDir::tempPath() + QStringLiteral("/Playground");
+    }
+    QDir().mkpath(logRoot);
+    _logFilePath = QDir(logRoot).filePath(QStringLiteral("lastlog.log"));
 }
 
 LogManager::~LogManager() {
@@ -74,6 +80,13 @@ LogManager::~LogManager() {
 }
 
 void LogManager::init() {
+    {
+        QFile file(_logFilePath);
+        if (file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
+            file.close();
+        }
+    }
+
     // 1. Install Qt global message handler
     qInstallMessageHandler(LogManager::qtMessageHandler);
 
@@ -134,15 +147,15 @@ void LogManager::log(QtMsgType type, const QString& msg) {
         _logBuffer.dequeue();
     }
 
-    writeToLogFile();
+    appendToLogFile(plainLogMsg);
 
     // 5. Emit the html log for UI render
     emit logAdded(htmlLogMsg);
 }
 
-void LogManager::writeToLogFile() {
+void LogManager::appendToLogFile(const QString& line) {
     QFile file(_logFilePath);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
         return;
     }
 
@@ -153,8 +166,6 @@ void LogManager::writeToLogFile() {
     stream.setCodec("UTF-8");
 #endif
 
-    for (const QString& line : _logBuffer) {
-        stream << line << "\n";
-    }
+    stream << line << "\n";
     file.close();
 }

@@ -1,6 +1,7 @@
 #pragma once
 #include "Pipeline/ProcessingFrame.h"
 #include <QString>
+#include <atomic>
 #include <memory>
 #include <vector>
 #include <mutex>
@@ -19,15 +20,15 @@ public:
     virtual QString name() const = 0;
     virtual void process(ProcessingFrame& frame) = 0;
     
-    virtual bool isEnabled() const { return _enabled; }
-    virtual void setEnabled(bool on) { _enabled = on; }
+    virtual bool isEnabled() const { return _enabled.load(std::memory_order_acquire); }
+    virtual void setEnabled(bool on) { _enabled.store(on, std::memory_order_release); }
 
     virtual std::vector<ParameterSpec> parameterSpecs() const { return {}; }
     virtual void setParameter(int index, double value) { (void)index; (void)value; }
     virtual double getParameter(int index) const { (void)index; return 0.0; }
 
 private:
-    bool _enabled = true;
+    std::atomic_bool _enabled{true};
 };
 
 class ProcessingPipeline {
