@@ -30,6 +30,7 @@
 #include <QScrollBar>
 #include <QKeyEvent>
 #include <QDoubleSpinBox>
+#include <QStyle>
 #include <QSyntaxHighlighter>
 #include <QRegularExpression>
 #include <QStringListModel>
@@ -603,67 +604,32 @@ void QProcessingWidget::initUI() {
     }
 
     _mainLayout = new QVBoxLayout(this);
-    _mainLayout->setContentsMargins(8, 8, 8, 8);
+    _mainLayout->setContentsMargins(12, 12, 12, 12);
     _mainLayout->setSpacing(8);
 
-    // 1. Header Frame (Title + Bypass/Active Toggle Button)
-    QFrame* headerFrame = new QFrame(this);
-    headerFrame->setObjectName(QStringLiteral("headerFrame"));
-    headerFrame->setStyleSheet(QStringLiteral(
-        "QFrame#headerFrame {"
-        "  background: transparent;"
-        "  border-bottom: 1px solid #d9e1ea;"
-        "  padding-bottom: 6px;"
-        "}"
-    ));
-    QHBoxLayout* headerLayout = new QHBoxLayout(headerFrame);
-    headerLayout->setContentsMargins(4, 0, 4, 4);
+    // Editor Title & Editor
+    QHBoxLayout* editorHeaderLayout = new QHBoxLayout();
+    editorHeaderLayout->setContentsMargins(0, 0, 0, 0);
 
-    QLabel* titleLabel = new QLabel(QStringLiteral("OpenCV Filter Script"), headerFrame);
-    titleLabel->setStyleSheet(QStringLiteral(
-        "font-weight: bold;"
-        "font-size: 13px;"
-        "color: #354657;"
-    ));
-    headerLayout->addWidget(titleLabel);
-    headerLayout->addStretch(1);
+    QLabel* editorTitle = new QLabel(QStringLiteral("OpenCV Scripting (C++ 20)"), this);
+    editorTitle->setObjectName(QStringLiteral("ProcessingEditorTitle"));
+    editorHeaderLayout->addWidget(editorTitle);
+    editorHeaderLayout->addStretch(1);
 
-    _enableToggleBtn = new QToolButton(headerFrame);
+    _enableToggleBtn = new QToolButton(this);
+    _enableToggleBtn->setObjectName(QStringLiteral("ProcessingEnableToggle"));
     _enableToggleBtn->setCheckable(true);
     _enableToggleBtn->setChecked(_scriptNode->isEnabled());
 
     auto updateToggleStyle = [this](bool checked) {
+        _enableToggleBtn->setProperty("active", checked);
         if (checked) {
             _enableToggleBtn->setText(QStringLiteral("Active"));
-            _enableToggleBtn->setStyleSheet(QStringLiteral(
-                "QToolButton {"
-                "  border: 1px solid #354657;"
-                "  border-radius: 11px;"
-                "  padding: 2px 10px;"
-                "  background-color: #f1f5f9;"
-                "  color: #354657;"
-                "  font-weight: bold;"
-                "  font-size: 11px;"
-                "  min-height: 16px;"
-                "  max-height: 16px;"
-                "}"
-            ));
         } else {
             _enableToggleBtn->setText(QStringLiteral("Bypass"));
-            _enableToggleBtn->setStyleSheet(QStringLiteral(
-                "QToolButton {"
-                "  border: 1px solid #cfd9e4;"
-                "  border-radius: 11px;"
-                "  padding: 2px 10px;"
-                "  background-color: #ffffff;"
-                "  color: #64748b;"
-                "  font-weight: bold;"
-                "  font-size: 11px;"
-                "  min-height: 16px;"
-                "  max-height: 16px;"
-                "}"
-            ));
         }
+        _enableToggleBtn->style()->unpolish(_enableToggleBtn);
+        _enableToggleBtn->style()->polish(_enableToggleBtn);
     };
 
     updateToggleStyle(_enableToggleBtn->isChecked());
@@ -675,84 +641,31 @@ void QProcessingWidget::initUI() {
         updateToggleStyle(checked);
     });
 
-    headerLayout->addWidget(_enableToggleBtn);
-    _mainLayout->addWidget(headerFrame);
-
-    // 2. Editor Title & Editor (Moved above Parameters)
-    QHBoxLayout* editorHeaderLayout = new QHBoxLayout();
-    editorHeaderLayout->setContentsMargins(0, 0, 0, 0);
-
-    QLabel* editorTitle = new QLabel(QStringLiteral("Script Code (C++20):"), this);
-    editorTitle->setStyleSheet(QStringLiteral("font-weight: 600; color: #4a5a6a;"));
-    editorHeaderLayout->addWidget(editorTitle);
-    editorHeaderLayout->addStretch(1);
-
-    _runtimePathsButton = new QPushButton(this);
+    _runtimePathsButton = new QToolButton(this);
     _runtimePathsButton->setIcon(QIcon(QStringLiteral(":/Resources/Icons/icons8-setting-48.png")));
     _runtimePathsButton->setToolTip(QStringLiteral("OpenCV runtime paths"));
-    _runtimePathsButton->setStyleSheet(
-        "QPushButton {"
-        "  background-color: #ffffff;"
-        "  color: #16202b;"
-        "  border: 1px solid #cfd9e4;"
-        "  border-radius: 8px;"
-        "  padding: 4px 8px;"
-        "  min-height: 22px;"
-        "  max-height: 22px;"
-        "}"
-        "QPushButton:hover {"
-        "  background-color: #f8fafc;"
-        "  border-color: #b8c6d5;"
-        "}"
-        "QPushButton:pressed {"
-        "  background-color: #f1f5f9;"
-        "  border-color: #9fb7cf;"
-        "}"
-    );
-    connect(_runtimePathsButton, &QPushButton::clicked, this, [this]() {
+    connect(_runtimePathsButton, &QToolButton::clicked, this, [this]() {
         RuntimePathsDialog dialog(this);
         dialog.exec();
     });
     editorHeaderLayout->addWidget(_runtimePathsButton);
 
-    _compileButton = new QPushButton(QStringLiteral("Compile & Apply Hot-Swap"), this);
-    _compileButton->setIcon(QIcon(QStringLiteral(":/Resources/Icons/icons8-refresh-48.png")));
-    _compileButton->setStyleSheet(
-        "QPushButton {"
-        "  background-color: #ffffff;"
-        "  color: #16202b;"
-        "  border: 1px solid #cfd9e4;"
-        "  font-weight: bold;"
-        "  border-radius: 8px;"
-        "  padding: 4px 10px;"
-        "  min-height: 22px;"
-        "  max-height: 22px;"
-        "}"
-        "QPushButton:hover {"
-        "  background-color: #f8fafc;"
-        "  border-color: #b8c6d5;"
-        "}"
-        "QPushButton:pressed {"
-        "  background-color: #f1f5f9;"
-        "  border-color: #9fb7cf;"
-        "}"
-        "QPushButton:disabled {"
-        "  background-color: #f7f7f7;"
-        "  border-color: #d6dee7;"
-        "  color: #97a6b4;"
-        "}"
-    );
-    connect(_compileButton, &QPushButton::clicked, this, &QProcessingWidget::handleCompile);
+    _compileButton = new QToolButton(this);
+    _compileButton->setIcon(QIcon(QStringLiteral(":/Resources/Icons/icons8-run-command-48.png")));
+    _compileButton->setToolTip(QStringLiteral("Compile & Apply Hot-Swap"));
+    connect(_compileButton, &QToolButton::clicked, this, &QProcessingWidget::handleCompile);
     editorHeaderLayout->addWidget(_compileButton);
+
+    editorHeaderLayout->addWidget(_enableToggleBtn);
     _mainLayout->addLayout(editorHeaderLayout);
 
     QFont monoFont(QStringLiteral("Courier New"), 12);
     monoFont.setStyleHint(QFont::Monospace);
 
     _codeEditor = new QCodeEditor(this);
+    _codeEditor->setObjectName(QStringLiteral("ProcessingCodeEditor"));
     _codeEditor->setFont(monoFont);
     _codeEditor->setMinimumHeight(150);
-    _codeEditor->setStyleSheet(QStringLiteral("QTextEdit { background-color: #ffffff; color: #1e293b; border: 1px solid #cfd9e4; border-radius: 8px; padding: 6px; }"));
 
     // Template code (now without parameter comments)
     QString templateCode =
@@ -794,14 +707,14 @@ void QProcessingWidget::initUI() {
 
     // 3a. Parameter Definitions Title & Editor
     auto* paramEditorTitle = new QLabel(QStringLiteral("Parameter Definitions:"), paramContainer);
-    paramEditorTitle->setStyleSheet(QStringLiteral("font-weight: 600; color: #4a5a6a; font-size: 11px;"));
+    paramEditorTitle->setObjectName(QStringLiteral("ProcessingParamEditorTitle"));
     paramContainerLayout->addWidget(paramEditorTitle);
 
     _paramEditor = new QTextEdit(paramContainer);
+    _paramEditor->setObjectName(QStringLiteral("ProcessingParamEditor"));
     _paramEditor->setMinimumHeight(60);
     _paramEditor->setMaximumHeight(90);
     _paramEditor->setPlaceholderText(QStringLiteral("@param: varName, name=\"Display Name\", min=0, max=100, default=50\n@param: ..."));
-    _paramEditor->setStyleSheet(QStringLiteral("QTextEdit { background-color: #ffffff; color: #1e293b; border: 1px solid #cfd9e4; border-radius: 8px; padding: 4px; font-family: Courier New; font-size: 11px; }"));
 
     // Default template parameters
     QString templateParams =
@@ -919,7 +832,7 @@ void QProcessingWidget::refreshParameterUI() {
 
     if (!_scriptNode->isLoaded()) {
         auto* waitLabel = new QLabel(QStringLiteral("Compile and apply the filter to configure parameters."), this);
-        waitLabel->setStyleSheet(QStringLiteral("color: #64748b; font-style: italic; padding: 6px; font-size: 11px;"));
+        waitLabel->setObjectName(QStringLiteral("ProcessingParamHintLabel"));
         _paramLayout->addWidget(waitLabel);
 
         ParameterControl ctrl;
@@ -933,7 +846,7 @@ void QProcessingWidget::refreshParameterUI() {
     auto specs = _scriptNode->parameterSpecs();
     if (specs.empty()) {
         auto* noParamLabel = new QLabel(QStringLiteral("No adjustable parameters for this script."), this);
-        noParamLabel->setStyleSheet(QStringLiteral("color: #777777; font-style: italic; padding: 4px;"));
+        noParamLabel->setObjectName(QStringLiteral("ProcessingParamEmptyLabel"));
         _paramLayout->addWidget(noParamLabel);
 
         ParameterControl ctrl;
@@ -950,9 +863,9 @@ void QProcessingWidget::refreshParameterUI() {
 
         auto* headerLayout = new QHBoxLayout();
         auto* nameLbl = new QLabel(spec.name, this);
-        nameLbl->setStyleSheet(QStringLiteral("color: #4a5a6a; font-weight: 600;"));
+        nameLbl->setObjectName(QStringLiteral("ProcessingParamNameLabel"));
         auto* valLbl = new QLabel(QString::number(currentVal, 'f', spec.decimals), this);
-        valLbl->setStyleSheet(QStringLiteral("font-weight: bold; color: #354657;"));
+        valLbl->setObjectName(QStringLiteral("ProcessingParamValueLabel"));
 
         headerLayout->addWidget(nameLbl);
         headerLayout->addWidget(valLbl, 0, Qt::AlignRight);
@@ -961,31 +874,9 @@ void QProcessingWidget::refreshParameterUI() {
         QWidget* controlWidget = nullptr;
         if (spec.decimals == 0) {
             auto* slider = new QSlider(Qt::Horizontal, this);
+            slider->setObjectName(QStringLiteral("ProcessingParamSlider"));
             slider->setRange(static_cast<int>(spec.minValue), static_cast<int>(spec.maxValue));
             slider->setValue(static_cast<int>(currentVal));
-            slider->setStyleSheet(QStringLiteral(
-                "QSlider::groove:horizontal {"
-                "  border: none;"
-                "  height: 4px;"
-                "  background: #e2e8f0;"
-                "  border-radius: 2px;"
-                "}"
-                "QSlider::sub-page:horizontal {"
-                "  background: #354657;"
-                "  border-radius: 2px;"
-                "}"
-                "QSlider::handle:horizontal {"
-                "  background: #ffffff;"
-                "  border: 2px solid #354657;"
-                "  width: 14px;"
-                "  height: 14px;"
-                "  margin: -5px 0;"
-                "  border-radius: 7px;"
-                "}"
-                "QSlider::handle:horizontal:hover {"
-                "  background: #354657;"
-                "}"
-            ));
 
             connect(slider, &QSlider::valueChanged, this, &QProcessingWidget::handleDynamicSliderChanged);
             _paramLayout->addWidget(slider);

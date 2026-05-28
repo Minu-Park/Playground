@@ -2,23 +2,25 @@
 #include "DeviceSession.h"
 #include "CameraSystem.h"
 #include "Gocator.h"
+#include "Chrome/DockTitleBar.h"
+#include "Chrome/MainTitleBar.h"
+#include "Chrome/MdiSubWindowContainer.h"
 #include "Utility/LogManager.h"
 #include <QAction>
 #include <QMenu>
 #include <QMenuBar>
-#include <QToolBar>
-#include <QIcon>
 #include <QMdiArea>
 #include <QMdiSubWindow>
+#include <QLayout>
 #include <QDockWidget>
+#include <QStatusBar>
 #include <QTextEdit>
 #include <QScrollBar>
 #include <QPainter>
-#include <QPaintEvent>
 #include <QPixmap>
-#include <QFileDialog>
 #include <QOpenGLFunctions>
 #include <QOpenGLWidget>
+#include <QMouseEvent>
 #include <algorithm>
 
 namespace {
@@ -28,7 +30,9 @@ public:
     explicit BrandedMdiArea(QWidget* parent = nullptr)
         : QMdiArea(parent)
         , _logo(QStringLiteral(":/Resources/BASLER_Logo.png"))
-    {}
+    {
+        setCursor(Qt::ArrowCursor);
+    }
 
 protected:
     void paintEvent(QPaintEvent* event) override {
@@ -73,6 +77,11 @@ protected:
 } // namespace
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
+    setWindowFlags(Qt::Window | Qt::FramelessWindowHint);
+    setAttribute(Qt::WA_TranslucentBackground);
+    setMouseTracking(true);
+    setCursor(Qt::ArrowCursor);
+
     setWindowTitle(QStringLiteral("Basler Playground"));
     resize(1600, 900);
 
@@ -84,10 +93,15 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     setCentralWidget(_mdiArea);
     createOpenGLCompositionSeed();
 
+    statusBar()->setSizeGripEnabled(false);
+
     createLogDock();
     createMenus();
 
-    // Connect global logger to our log dock using QueuedConnection for thread-safety.
+    menuBar()->setNativeMenuBar(false);
+    auto* titleBar = new MainTitleBar(this, menuBar(), this);
+    setMenuWidget(titleBar);
+
     connect(LogManager::instance(), &LogManager::logAdded, this, &MainWindow::appendLog, Qt::QueuedConnection);
 }
 
@@ -150,8 +164,26 @@ void MainWindow::onAddBaslerCamera() {
     auto* session = new DeviceSession(camera, _cameraSystem.get(), nullptr);
     session->setAttribute(Qt::WA_DeleteOnClose);
     session->setWindowTitle(QStringLiteral("Basler Camera Session"));
-    _mdiArea->addSubWindow(session);
-    session->show();
+    session->setObjectName(QStringLiteral("DeviceSessionWindow"));
+
+    auto* subWin = new QMdiSubWindow(_mdiArea);
+    subWin->setAttribute(Qt::WA_DeleteOnClose);
+    subWin->setWindowFlags(Qt::SubWindow | Qt::FramelessWindowHint);
+    subWin->setContentsMargins(0, 0, 0, 0);
+    subWin->setWindowTitle(session->windowTitle());
+
+    session->setSubWindow(subWin);
+
+    auto* container = new MdiSubWindowContainer(subWin, session, session->menuBar(), subWin);
+    subWin->setWidget(container);
+
+    if (subWin->layout()) {
+        subWin->layout()->setContentsMargins(0, 0, 0, 0);
+        subWin->layout()->setSpacing(0);
+    }
+
+    _mdiArea->addSubWindow(subWin);
+    subWin->show();
 }
 
 void MainWindow::onAddLmiGocator() {
@@ -159,16 +191,52 @@ void MainWindow::onAddLmiGocator() {
     auto* session = new DeviceSession(gocator, nullptr);
     session->setAttribute(Qt::WA_DeleteOnClose);
     session->setWindowTitle(QStringLiteral("LMI Gocator Session"));
-    _mdiArea->addSubWindow(session);
-    session->show();
+    session->setObjectName(QStringLiteral("DeviceSessionWindow"));
+
+    auto* subWin = new QMdiSubWindow(_mdiArea);
+    subWin->setAttribute(Qt::WA_DeleteOnClose);
+    subWin->setWindowFlags(Qt::SubWindow | Qt::FramelessWindowHint);
+    subWin->setContentsMargins(0, 0, 0, 0);
+    subWin->setWindowTitle(session->windowTitle());
+
+    session->setSubWindow(subWin);
+
+    auto* container = new MdiSubWindowContainer(subWin, session, session->menuBar(), subWin);
+    subWin->setWidget(container);
+
+    if (subWin->layout()) {
+        subWin->layout()->setContentsMargins(0, 0, 0, 0);
+        subWin->layout()->setSpacing(0);
+    }
+
+    _mdiArea->addSubWindow(subWin);
+    subWin->show();
 }
 
 void MainWindow::onAddTestImageSession() {
     auto* session = new DeviceSession(QStringList(), nullptr);
     session->setAttribute(Qt::WA_DeleteOnClose);
     session->setWindowTitle(QStringLiteral("Test Images Session"));
-    _mdiArea->addSubWindow(session);
-    session->show();
+    session->setObjectName(QStringLiteral("DeviceSessionWindow"));
+
+    auto* subWin = new QMdiSubWindow(_mdiArea);
+    subWin->setAttribute(Qt::WA_DeleteOnClose);
+    subWin->setWindowFlags(Qt::SubWindow | Qt::FramelessWindowHint);
+    subWin->setContentsMargins(0, 0, 0, 0);
+    subWin->setWindowTitle(session->windowTitle());
+
+    session->setSubWindow(subWin);
+
+    auto* container = new MdiSubWindowContainer(subWin, session, session->menuBar(), subWin);
+    subWin->setWidget(container);
+
+    if (subWin->layout()) {
+        subWin->layout()->setContentsMargins(0, 0, 0, 0);
+        subWin->layout()->setSpacing(0);
+    }
+
+    _mdiArea->addSubWindow(subWin);
+    subWin->show();
 }
 
 void MainWindow::onTileWindows() {
@@ -223,23 +291,12 @@ void MainWindow::createLogDock() {
     _logDock = new QDockWidget(tr("System Logs"), this);
     _logDock->setObjectName(QStringLiteral("SystemLogsDock"));
     _logDock->setAllowedAreas(Qt::BottomDockWidgetArea | Qt::TopDockWidgetArea);
+    _logDock->setTitleBarWidget(new DockTitleBar(_logDock, this));
 
     _logViewer = new QTextEdit(this);
+    _logViewer->setObjectName(QStringLiteral("SystemLogViewer"));
     _logViewer->setReadOnly(true);
     _logViewer->document()->setMaximumBlockCount(500); // UI also rolls up to 500 lines
-
-    // Style the text edit to align with the clean white design system
-    _logViewer->setStyleSheet(QStringLiteral(
-        "QTextEdit {"
-        "  background-color: #ffffff;"
-        "  color: #16202b;"
-        "  border: 1px solid #d9e1ea;"
-        "  border-radius: 8px;"
-        "  font-family: 'Menlo', 'Monaco', 'Consolas', 'DejaVu Sans Mono', 'Liberation Mono', 'Courier New', monospace;"
-        "  font-size: 11px;"
-        "  padding: 8px;"
-        "}"
-    ));
 
     _logDock->setWidget(_logViewer);
     addDockWidget(Qt::BottomDockWidgetArea, _logDock);
@@ -258,4 +315,115 @@ void MainWindow::appendLog(const QString& msg) {
             bar->setValue(bar->maximum());
         }
     }
+}
+
+void MainWindow::mousePressEvent(QMouseEvent* event)
+{
+    if (event->button() == Qt::LeftButton) {
+        _dragStartPos = event->globalPosition().toPoint();
+        _resizeMode = determineResizeMode(event->position().toPoint());
+        if (_resizeMode != ResizeNone) {
+            event->accept();
+            return;
+        }
+    }
+    QMainWindow::mousePressEvent(event);
+}
+
+void MainWindow::mouseMoveEvent(QMouseEvent* event)
+{
+    if (event->buttons() & Qt::LeftButton && _resizeMode != ResizeNone) {
+        QPoint currentGlobalPos = event->globalPosition().toPoint();
+        QPoint delta = currentGlobalPos - _dragStartPos;
+        QRect geom = geometry();
+
+        int left = geom.left();
+        int right = geom.x() + geom.width();
+        int top = geom.top();
+        int bottom = geom.y() + geom.height();
+
+        if (_resizeMode & ResizeLeft) {
+            left += delta.x();
+            if (right - left < minimumWidth()) {
+                left = right - minimumWidth();
+            }
+        }
+        if (_resizeMode & ResizeRight) {
+            right += delta.x();
+            if (right - left < minimumWidth()) {
+                right = left + minimumWidth();
+            }
+        }
+        if (_resizeMode & ResizeTop) {
+            top += delta.y();
+            if (bottom - top < minimumHeight()) {
+                top = bottom - minimumHeight();
+            }
+        }
+        if (_resizeMode & ResizeBottom) {
+            bottom += delta.y();
+            if (bottom - top < minimumHeight()) {
+                bottom = top + minimumHeight();
+            }
+        }
+
+        setGeometry(left, top, right - left, bottom - top);
+        _dragStartPos = currentGlobalPos;
+        event->accept();
+        return;
+    } else {
+        updateCursorShape(event->position().toPoint());
+    }
+    QMainWindow::mouseMoveEvent(event);
+}
+
+void MainWindow::mouseReleaseEvent(QMouseEvent* event)
+{
+    if (event->button() == Qt::LeftButton) {
+        _resizeMode = ResizeNone;
+        setCursor(Qt::ArrowCursor);
+        event->accept();
+    } else {
+        QMainWindow::mouseReleaseEvent(event);
+    }
+}
+
+int MainWindow::determineResizeMode(const QPoint& pos)
+{
+    if (isMaximized()) {
+        return ResizeNone;
+    }
+
+    int mode = ResizeNone;
+    const int border = 6;
+
+    if (pos.x() < border) mode |= ResizeLeft;
+    if (pos.x() > width() - border) mode |= ResizeRight;
+    if (pos.y() < border) mode |= ResizeTop;
+    if (pos.y() > height() - border) mode |= ResizeBottom;
+
+    return mode;
+}
+
+void MainWindow::updateCursorShape(const QPoint& pos)
+{
+    int mode = determineResizeMode(pos);
+
+    if (mode == ResizeNone) {
+        setCursor(Qt::ArrowCursor);
+    } else if ((mode & ResizeLeft && mode & ResizeTop) || (mode & ResizeRight && mode & ResizeBottom)) {
+        setCursor(Qt::SizeFDiagCursor);
+    } else if ((mode & ResizeRight && mode & ResizeTop) || (mode & ResizeLeft && mode & ResizeBottom)) {
+        setCursor(Qt::SizeBDiagCursor);
+    } else if (mode & ResizeLeft || mode & ResizeRight) {
+        setCursor(Qt::SizeHorCursor);
+    } else if (mode & ResizeTop || mode & ResizeBottom) {
+        setCursor(Qt::SizeVerCursor);
+    }
+}
+
+void MainWindow::leaveEvent(QEvent* event)
+{
+    Q_UNUSED(event);
+    setCursor(Qt::ArrowCursor);
 }

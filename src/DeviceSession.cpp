@@ -9,6 +9,7 @@
 #include "UI/QProcessingWidget.h"
 #include "Controller/StaticImageImagingController.h"
 #include "UI/QStaticImageControlWidget.h"
+#include "Chrome/DockTitleBar.h"
 #include <QDockWidget>
 #include <QMenuBar>
 #include <QMenu>
@@ -64,6 +65,8 @@ DeviceSession::~DeviceSession() {
 }
 
 void DeviceSession::initCommon() {
+    setCursor(Qt::ArrowCursor);
+    setAttribute(Qt::WA_TranslucentBackground);
     _graphicsEngine = new GraphicsEngine(this);
     setCentralWidget(_graphicsEngine);
     _sink = new GraphicsEngineSink(_graphicsEngine, this);
@@ -114,6 +117,7 @@ void DeviceSession::setControlWidget(QWidget* widget, const QString& title) {
     _controlDock = new QDockWidget(title, this);
     _controlDock->setObjectName(QStringLiteral("SessionControlDock"));
     _controlDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    _controlDock->setTitleBarWidget(new DockTitleBar(_controlDock, this));
     _controlDock->setWidget(widget);
     addDockWidget(Qt::LeftDockWidgetArea, _controlDock);
     _controlDock->show();
@@ -125,6 +129,7 @@ void DeviceSession::createProcessingDock() {
 
     _processingDock = new QDockWidget(QStringLiteral("Image Processing Pipeline"), this);
     _processingDock->setObjectName(QStringLiteral("ProcessingPipelineDock"));
+    _processingDock->setTitleBarWidget(new DockTitleBar(_processingDock, this));
     _processingDock->setWidget(_processingWidget);
     addDockWidget(Qt::RightDockWidgetArea, _processingDock);
 
@@ -173,9 +178,9 @@ void DeviceSession::updateProcessingDockLayoutState() {
 
         int currentWidth = width();
         int currentHeight = height();
-        if (auto* subWin = qobject_cast<QMdiSubWindow*>(parentWidget())) {
-            currentWidth = subWin->width();
-            currentHeight = subWin->height();
+        if (_subWindow) {
+            currentWidth = _subWindow->width();
+            currentHeight = _subWindow->height();
         }
 
         int newWidth = currentWidth;
@@ -197,22 +202,29 @@ void DeviceSession::updateProcessingDockLayoutState() {
                 }
             }
 
-            if (auto* subWin = qobject_cast<QMdiSubWindow*>(parentWidget())) {
-                subWin->resize(newWidth, newHeight);
-            } else {
-                resize(newWidth, newHeight);
-            }
-            resizeDocks({_processingDock}, {dockWidth}, Qt::Horizontal);
-        } else {
-            newWidth = currentWidth - dockWidth;
-            if (newWidth > minimumWidth()) {
-                if (auto* subWin = qobject_cast<QMdiSubWindow*>(parentWidget())) {
-                    subWin->resize(newWidth, newHeight);
+            bool isMax = _subWindow ? _subWindow->isMaximized() : isMaximized();
+
+            if (!isMax) {
+                if (_subWindow) {
+                    _subWindow->resize(newWidth, newHeight);
                 } else {
                     resize(newWidth, newHeight);
                 }
             }
-            _undockedMainWindowWidth = newWidth;
+            resizeDocks({_processingDock}, {dockWidth}, Qt::Horizontal);
+        } else {
+            bool isMax = _subWindow ? _subWindow->isMaximized() : isMaximized();
+            newWidth = currentWidth - dockWidth;
+            if (newWidth > minimumWidth()) {
+                if (!isMax) {
+                    if (_subWindow) {
+                        _subWindow->resize(newWidth, newHeight);
+                    } else {
+                        resize(newWidth, newHeight);
+                    }
+                    _undockedMainWindowWidth = newWidth;
+                }
+            }
         }
     });
 }
@@ -223,10 +235,13 @@ void DeviceSession::resizeEvent(QResizeEvent* event) {
     // Cache the undocked width if the processing dock is not docked & visible
     bool isDockedVisible = _processingDock && _processingDock->isVisible() && !_processingDock->isFloating();
     if (!isDockedVisible) {
-        if (auto* subWin = qobject_cast<QMdiSubWindow*>(parentWidget())) {
-            _undockedMainWindowWidth = subWin->width();
-        } else {
-            _undockedMainWindowWidth = width();
+        bool isMax = _subWindow ? _subWindow->isMaximized() : isMaximized();
+        if (!isMax) {
+            if (_subWindow) {
+                _undockedMainWindowWidth = _subWindow->width();
+            } else {
+                _undockedMainWindowWidth = width();
+            }
         }
     }
 }

@@ -12,6 +12,7 @@ class QCameraWidget;
 class QGocatorWidget;
 class QProcessingWidget;
 class QStaticImageControlWidget;
+class QMdiSubWindow;
 
 #include <memory>
 
@@ -26,6 +27,8 @@ public:
     explicit DeviceSession(const QStringList& filePaths, QWidget* parent = nullptr);
     ~DeviceSession() override;
 
+    void setSubWindow(QMdiSubWindow* subWin) { _subWindow = subWin; }
+
 private:
     void initCommon();
     void initCamera();
@@ -35,6 +38,7 @@ private:
     void createProcessingDock();
     void setupViewMenu();
 
+    QMdiSubWindow* _subWindow = nullptr;
     GraphicsEngine* _graphicsEngine = nullptr;
     QDockWidget* _controlDock = nullptr;
     QDockWidget* _processingDock = nullptr;

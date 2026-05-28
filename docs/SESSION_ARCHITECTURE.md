@@ -3,6 +3,7 @@
 ## Decision
 - `DeviceSession` is the parent-owned session authority.
 - `GraphicsEngine` is the central session surface.
+- Native top-level and MDI frames are replaced by Resources chrome widgets assembled by the parent app.
 - Device, processing, and display routing are composed by `DeviceSession`.
 - Device control panels may be hidden without stopping acquisition.
 
@@ -13,13 +14,17 @@
 - Effect: `MainWindow` should create sessions, but `DeviceSession` should own session composition.
 - Cause: `GraphicsEngine` is a reusable visualization module.
 - Effect: it must not learn Camera, Gocator, or processing orchestration concepts.
+- Cause: frameless windows remove native title bars and resize handles.
+- Effect: `MainWindow`, `MdiSubWindowContainer`, and title-bar widgets own chrome input handling while `DeviceSession` stays the lifecycle owner.
 
 ## Class Boundaries
 
 | Class | Responsibility | Must Not Own |
 | --- | --- | --- |
-| `MainWindow` | App shell, MDI workspace, menus, global logs, `CameraSystem`, startup OpenGL composition seed, session creation/removal ordering | Frame routing, processing policy, per-device UI internals |
-| `DeviceSession` | One session authority, device lifetime binding, controller lifetime, processing dock, control dock, display sink binding | Module internals, generic rendering implementation |
+| `MainWindow` | App shell, Resources-provided frameless top-level chrome, MDI workspace, menus, global logs, `CameraSystem`, startup OpenGL composition seed, session creation/removal ordering | Frame routing, processing policy, per-device UI internals |
+| `modules/Resources/Chrome` widgets | `MainTitleBar`, `CustomTitleBar`, `MdiSubWindowContainer`, and `DockTitleBar` reusable chrome presentation/input widgets | Device/session lifecycle, acquisition state, frame routing |
+| `DockTitleBar` | Styled dock title and dock close/float controls provided by Resources | Dock content behavior, acquisition state |
+| `DeviceSession` | One session authority, device lifetime binding, controller lifetime, processing dock, control dock, display sink binding, wrapper-size coordination | Module internals, generic rendering implementation, chrome hit testing |
 | `GraphicsEngine` | Central visualization widget, 2D/3D display state, render interaction | Camera/Gocator lifecycle, processing graph, session policy |
 | `AbstractImagingController` | Common start/stop/grab-state contract | Widget layout, app shell menus |
 | `CameraImagingController` | Camera callback registration, `Camera::ready()` admission, `PylonScene3DProfile` 기반 2D/3D conversion, pipeline execution, display enqueue | `MainWindow`, dock layout |
@@ -43,13 +48,19 @@
 ```text
 MainWindow
   owns QMdiArea
+  uses Resources MainTitleBar
   owns CameraSystem
-  creates DeviceSession subwindows
+  creates frameless QMdiSubWindow wrappers
+
+QMdiSubWindow
+  widget: Resources MdiSubWindowContainer
+  title row: Resources CustomTitleBar
+  body: DeviceSession
 
 DeviceSession
   central widget: GraphicsEngine
-  left dock: source control panel
-  right dock: Image Processing Pipeline
+  left dock: source control panel with Resources DockTitleBar
+  right dock: Image Processing Pipeline with Resources DockTitleBar
   owns: device pointer binding, controller, sink
 ```
 
@@ -58,6 +69,7 @@ DeviceSession
 - Hiding the source control dock only hides controls.
 - Hiding the processing dock only hides processing controls.
 - Stopping acquisition must happen through a session/device action, not dock visibility.
+- Minimizing, maximizing, dragging, or resizing the wrapper changes presentation only.
 - Deleting a Camera session removes the camera from `CameraSystem` after controller teardown.
 - Deleting a Gocator session closes and deletes the Gocator after controller teardown.
 - Camera sessions must preserve `Camera::ready()` as the live-frame admission contract.

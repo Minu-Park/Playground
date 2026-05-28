@@ -9,6 +9,7 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QSettings>
+#include <QStyle>
 #include <QVBoxLayout>
 
 namespace {
@@ -31,7 +32,7 @@ RuntimePathsDialog::RuntimePathsDialog(QWidget* parent)
         tr("Configure runtime-provided OpenCV paths. Use a C++ compiler driver such as clang++, g++, or c++. Empty fields fall back to environment variables, app-local runtime folders, then CMake defaults."),
         this);
     description->setWordWrap(true);
-    description->setStyleSheet(QStringLiteral("color: #425467;"));
+    description->setObjectName(QStringLiteral("RuntimePathsDescription"));
     rootLayout->addWidget(description);
 
     auto* formLayout = new QFormLayout();
@@ -50,8 +51,9 @@ RuntimePathsDialog::RuntimePathsDialog(QWidget* parent)
     rootLayout->addLayout(formLayout);
 
     _statusLabel = new QLabel(this);
+    _statusLabel->setObjectName(QStringLiteral("RuntimePathsStatusLabel"));
+    _statusLabel->setProperty("state", QStringLiteral("normal"));
     _statusLabel->setWordWrap(true);
-    _statusLabel->setStyleSheet(QStringLiteral("color: #64748b;"));
     rootLayout->addWidget(_statusLabel);
 
     auto* buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
@@ -121,11 +123,13 @@ void RuntimePathsDialog::updateStatus() {
 
     if (warnings.isEmpty()) {
         _statusLabel->setText(tr("Empty fields are allowed and will use the fallback resolver."));
-        _statusLabel->setStyleSheet(QStringLiteral("color: #64748b;"));
+        _statusLabel->setProperty("state", QStringLiteral("normal"));
     } else {
         _statusLabel->setText(warnings.join(QStringLiteral(" ")));
-        _statusLabel->setStyleSheet(QStringLiteral("color: #b45309; font-weight: 600;"));
+        _statusLabel->setProperty("state", QStringLiteral("warning"));
     }
+    _statusLabel->style()->unpolish(_statusLabel);
+    _statusLabel->style()->polish(_statusLabel);
 }
 
 QLineEdit* RuntimePathsDialog::addPathRow(const QString& label, bool directory) {

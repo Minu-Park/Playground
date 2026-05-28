@@ -65,8 +65,8 @@ private:
 
     // Dynamic compiler UI (OpenCV optional)
     QCodeEditor* _codeEditor = nullptr;
-    QPushButton* _runtimePathsButton = nullptr;
-    QPushButton* _compileButton = nullptr;
+    QToolButton* _runtimePathsButton = nullptr;
+    QToolButton* _compileButton = nullptr;
 
     QProcess* _compiler = nullptr;
     QString _scratchDir;

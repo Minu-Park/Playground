@@ -67,20 +67,23 @@ git -C modules/Resources diff --check
 
 ## Current State
 - The app is an MDI workspace.
-- `MainWindow` owns device creation, global log dock wiring, MDI background painting, and shutdown ordering.
+- `MainWindow` owns device creation, global log dock wiring, MDI background painting, host resize hit testing, and shutdown ordering while using Resources chrome widgets.
 - `MainWindow` creates a transparent one-pixel OpenGL composition seed before first show to avoid first-session insertion of the top-level window's first OpenGL child.
-- `DeviceSession` owns per-session authority, controller lifetime, device control docks, processing docks, and display sink binding.
+- Resources `MdiSubWindowContainer` and `CustomTitleBar` own styled MDI chrome; `DeviceSession` owns per-session authority, controller lifetime, device control docks, processing docks, and display sink binding.
 - `GraphicsEngine` is the session central widget and remains visualization-only.
 - Device control dock visibility must not change acquisition state.
 - Camera, Gocator, and Static Image sessions are routed through imaging controllers.
 - `GraphicsEngineSink` owns GUI-thread display enqueue and explicit display clear.
 - Camera 3D routing uses a pylon family profile and `PylonScene3DAdapter`: Blaze compatibility, Stereo mini direct XYZ/color mapping, and Stereo ace disparity/calibration conversion compile in the baseline.
 - `GraphicsEngine` neutral scene contract preserves optional color images, registration metadata, and organized RGB for color point clouds.
-- `Resources` owns reusable QSS and assets.
+- `Resources` owns reusable single-theme split QSS, chrome widgets, and assets.
 - `QGocatorWidget` reports callback-confirmed grab transitions and asynchronous parameter update submissions in its local status bar.
+- `QGocatorWidget` keeps parameter edits and feature-value refreshes serialized through owned watchers and joins them during shutdown.
 - `Gocator::syslog()` flushes operation records for immediate host-side redirected logging.
 - `LogManager` writes `lastlog.log` under the app data location and appends each line instead of rewriting the rolling UI buffer.
-- Test Image control sizing and neutral selection styling remain in `modules/Resources/Style.qss`.
+- Top-level title bar, session title bar, MDI wrapper, dock title bar, MDI chrome styling, Camera/Gocator status/message styling, Test Image styling, GraphicsEngine line-profile helper styling, and neutral selection styling remain in `modules/Resources`.
+- Camera, Gocator, and GraphicsEngine modules must not call `Resources::installResources`; they should expose object names or semantic properties and keep default Qt fallback behavior for standalone use.
+- `GraphicsEngine` 2D image views support Ctrl-wheel manual zoom around the cursor while preserving fit-mode behavior.
 - OpenCV is optional for the host build. `QProcessingWidget` always builds, while `DynamicProcessingCompiler` resolves OpenCV compile paths from configured runtime paths, app-local runtime paths, or CMake-discovered defaults.
 
 ## Runtime Paths
@@ -107,6 +110,7 @@ git -C modules/Resources diff --check
 
 ## Current Priority
 - Keep Camera/Gocator lifecycle cleanup stable on window close and app quit.
+- Validate frameless top-level, MDI, and dock chrome on macOS, Linux, and Windows because native window behavior differs by platform and window manager.
 - OpenGL composition seed validation passed on macOS for first-session host refresh removal; repeat on Linux and monitor for visible seed artifacts.
 - Preserve Camera `ready()` based live-frame admission.
 - Validate Basler Stereo mini and Stereo ace hardware against the implemented color Scene3D baseline, then add IR/profile UX and any capability gaps defined in `docs/STEREO_3D_CAMERA_INTEGRATION.md`.
@@ -139,6 +143,7 @@ git -C modules/Resources diff --check
 - Publish changed module commits first; publish the parent pointer only after all referenced module commits are available upstream and the parent validation passes.
 - Keep callback UI writes queued to the GUI thread.
 - Keep style changes in `modules/Resources` unless a widget needs an object-name/API change.
+- Keep reusable chrome widgets, split styling, and icons in `modules/Resources`; parent `src/UI` must not own reusable presentation code.
 - Ask before changing module ownership, callback admission policy, render visibility policy, or backpressure behavior.
 
 ## Fresh Clone Troubleshooting
