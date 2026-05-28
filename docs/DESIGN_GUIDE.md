@@ -64,6 +64,12 @@ QLabel#CameraMessageLabel[messageState="error"] {
 - Buttons should remain enabled/disabled by behavior, not by the presence of a theme asset.
 - Do not move device logic, render logic, callbacks, or session ownership into Resources to make styling easier.
 
+## QComboBox Inline Dropdown
+- QComboBox dropdowns use a GTK-style in-place expansion: the list appears flush below the combo as a single connected rounded rectangle, not as a detached popup.
+- `PopupStyleFilter` in `Resources.cpp` repositions the popup container directly below the combo, removes the native frame, and strips the container's QFrame border so the inner `QAbstractItemView` draws the visible border.
+- QSS `QComboBox:on` removes the bottom border and bottom radius; `QComboBox QAbstractItemView` draws left/right/bottom borders with bottom radius only. Together they form one seamless box.
+- When screen space below is insufficient, the popup appears above the combo instead.
+
 ## Frameless Window Interaction
 - **DPI-aware Logo Scaling**: Raw logos must be scaled by multiplying the target logical size by `devicePixelRatio()` in C++, then setting `setDevicePixelRatio()` on the scaled pixmap before insertion, preventing upsizing blurriness.
 - **DPI-aware Stateful Button Icons**: Custom button icons (such as minimize, maximize, and close buttons) require smooth scaling. Direct QSS `image` paths scale poorly without anti-aliasing. Implement stateful swaps via C++ `eventFilter` on `QEvent::Enter` and `QEvent::Leave` to bypass `QStyleSheetStyle`'s QIcon::Active rendering limitations.
