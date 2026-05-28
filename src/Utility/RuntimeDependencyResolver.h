@@ -18,6 +18,10 @@ private:
     static QString settingValue(const QString& key);
     static QString environmentValue(const char* key);
     static QString appRuntimePath(const QString& dependency, const QString& child);
+    static QStringList commonCxxCompilerCandidates();
+    static QStringList commonOpenCvIncludeCandidates();
+    static QStringList commonOpenCvLibraryCandidates();
+    static QString firstExecutable(const QStringList& candidates);
     static QString firstPath(const QStringList& candidates);
     static QString firstValue(const QStringList& candidates);
     static QStringList splitList(const QString& value);

@@ -92,7 +92,7 @@ git -C modules/Resources diff --check
 - Default behavior prefers system-discovered SDK paths when available.
 - Runtime overrides are allowed for deployment and machine-specific SDK layouts.
 - Users can edit OpenCV overrides from the settings button beside the OpenCV filter script compile button.
-- OpenCV live compilation path resolution checks, in order: `QSettings`, environment variables, app-local runtime folders, then CMake defaults.
+- OpenCV live compilation path resolution checks, in order: `QSettings`, environment variables, app-local runtime folders, CMake defaults, then common system candidates.
 - OpenCV compiler path must point to a C++ compiler driver such as `clang++`, `g++`, or `c++`; C drivers such as `clang` do not link the C++ runtime.
 - OpenCV `QSettings` keys:
   - `RuntimePaths/OpenCV/CompilerPath`
@@ -109,6 +109,7 @@ git -C modules/Resources diff --check
   - `<appDir>/runtime/opencv/lib`
   - `<appDir>/runtime/OpenCV/include`
   - `<appDir>/runtime/OpenCV/lib`
+- Common OpenCV candidates include `/opt/opencv`, Homebrew `/opt/homebrew`, `/usr/local`, Linux `/usr`, and common Windows `C:/opencv` layouts.
 
 ## Current Priority
 - Keep Camera/Gocator lifecycle cleanup stable on window close and app quit.
@@ -121,8 +122,8 @@ git -C modules/Resources diff --check
 - Validate UI and lifecycle changes with the smallest viable parent configure/build.
 
 ## Next Structural Sequence
-1. Generalize runtime path policy for pylon and GoPxL/Gocator SDKs.
-2. Add explicit runtime diagnostics UI/logging for missing pylon, GoPxL, and OpenCV paths.
+1. Auto-detect C++ compiler and OpenCV include/library paths for live filter compilation.
+2. Add explicit runtime diagnostics UI/logging for missing OpenCV compile/load paths.
 3. Document `process_image` ABI v1 inputs, ownership, channel format, and compatibility rules.
 4. Decide whether multi-node processing uses ABI v1 as a per-node wrapper or needs a new plugin ABI.
 5. Add manual platform validation notes for macOS/Linux/Windows OpenCV compile/load paths.

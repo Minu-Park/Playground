@@ -1,5 +1,7 @@
 #include "UI/RuntimePathsDialog.h"
 
+#include "Pipeline/DynamicProcessingCompiler.h"
+
 #include <QDialogButtonBox>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -29,7 +31,7 @@ RuntimePathsDialog::RuntimePathsDialog(QWidget* parent)
     auto* rootLayout = new QVBoxLayout(this);
 
     auto* description = new QLabel(
-        tr("Configure runtime-provided OpenCV paths. Use a C++ compiler driver such as clang++, g++, or c++. Empty fields fall back to environment variables, app-local runtime folders, then CMake defaults."),
+        tr("Configure OpenCV filter script paths. Empty saved overrides are filled from auto-detected compiler/OpenCV paths."),
         this);
     description->setWordWrap(true);
     description->setObjectName(QStringLiteral("RuntimePathsDescription"));
@@ -80,18 +82,28 @@ RuntimePathsDialog::RuntimePathsDialog(QWidget* parent)
 
 void RuntimePathsDialog::loadSettings() {
     QSettings settings;
-    _compilerEdit->setText(settings.value(QString::fromLatin1(kCompilerPathKey)).toString());
-    _includeEdit->setText(settings.value(QString::fromLatin1(kIncludeDirKey)).toString());
-    _libraryDirEdit->setText(settings.value(QString::fromLatin1(kLibraryDirKey)).toString());
-    _librariesEdit->setText(settings.value(QString::fromLatin1(kLibrariesKey)).toString());
+    const OpenCvBuildEnvironment detected = OpenCvBuildEnvironment::fromBuildDefaults();
+    _compilerEdit->setText(settings.value(QString::fromLatin1(kCompilerPathKey), detected.compilerPath).toString());
+    _includeEdit->setText(settings.value(QString::fromLatin1(kIncludeDirKey), detected.includeDir).toString());
+    _libraryDirEdit->setText(settings.value(QString::fromLatin1(kLibraryDirKey), detected.libraryDir).toString());
+    _librariesEdit->setText(settings.value(QString::fromLatin1(kLibrariesKey), detected.libraries.join(QStringLiteral(";"))).toString());
 }
 
 void RuntimePathsDialog::saveSettings() {
     QSettings settings;
-    settings.setValue(QString::fromLatin1(kCompilerPathKey), _compilerEdit->text().trimmed());
-    settings.setValue(QString::fromLatin1(kIncludeDirKey), _includeEdit->text().trimmed());
-    settings.setValue(QString::fromLatin1(kLibraryDirKey), _libraryDirEdit->text().trimmed());
-    settings.setValue(QString::fromLatin1(kLibrariesKey), _librariesEdit->text().trimmed());
+    const auto saveOrRemove = [&settings](const char* key, const QString& value) {
+        const QString settingKey = QString::fromLatin1(key);
+        const QString trimmed = value.trimmed();
+        if (trimmed.isEmpty()) {
+            settings.remove(settingKey);
+        } else {
+            settings.setValue(settingKey, trimmed);
+        }
+    };
+    saveOrRemove(kCompilerPathKey, _compilerEdit->text());
+    saveOrRemove(kIncludeDirKey, _includeEdit->text());
+    saveOrRemove(kLibraryDirKey, _libraryDirEdit->text());
+    saveOrRemove(kLibrariesKey, _librariesEdit->text());
 }
 
 void RuntimePathsDialog::clearSettings() {
@@ -122,7 +134,7 @@ void RuntimePathsDialog::updateStatus() {
     }
 
     if (warnings.isEmpty()) {
-        _statusLabel->setText(tr("Empty fields are allowed and will use the fallback resolver."));
+        _statusLabel->setText(tr("These values are used by OpenCV filter script compilation. Clear overrides reloads auto-detected defaults."));
         _statusLabel->setProperty("state", QStringLiteral("normal"));
     } else {
         _statusLabel->setText(warnings.join(QStringLiteral(" ")));

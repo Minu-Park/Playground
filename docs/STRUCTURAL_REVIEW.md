@@ -22,7 +22,7 @@
 | Medium | OpenCV discovery vs CMake policy lifetime | Parent CMake still sets `CMP0146` to `OLD` when probing OpenCV as a default runtime provider because the installed OpenCV config probes CUDA through CMake's removed legacy module. | The host now builds without OpenCV, but configure-time OpenCV discovery can still emit a deprecation warning when used for defaults. | Keep OpenCV optional for the host build; remove or isolate the `OLD` policy once runtime/app path providers are sufficient. |
 | Medium | Dynamic compile policy vs plugin ABI | `DynamicProcessingCompiler` now owns generated source, compiler arguments, and output paths for `process_image` ABI v1, and `RuntimePathsDialog` exposes OpenCV path overrides. The broader multi-node/plugin ABI is not defined. | OpenCV processing can grow beyond a UI-owned compile command, but ABI expansion still needs an explicit contract. | Keep `process_image` as ABI v1 until a broader plugin ABI is designed. |
 | Medium | OpenGL composition seed vs startup cost | `QVTKOpenGLNativeWidget` derives from `QOpenGLWidget`, and Qt 6.4+ can recreate a visible top-level window when its first OpenGL child is inserted. First-session-only reproduction on macOS and Linux confirmed this path; `MainWindow` now creates a transparent one-pixel `QOpenGLWidget` before first show. | The seed moves surface composition setup before visible UI and resolved the first-session refresh in macOS validation, but adds one persistent GL context on every platform. | Repeat first-session verification on Linux and retain the seed only while startup/background appearance remains acceptable. |
-| Low | Runtime dependency policy vs cross-platform claim | Gocator, pylon, OpenCV, and similar runtime dependencies can be installed at different versions and paths per machine. System discovery alone cannot cover every deployment. | Windows/macOS/Linux behavior can diverge, and missing SDK paths can fail late or silently without an app-level path policy. | Prefer system-installed discovery, but add app/user/deploy-time path injection. Bundle only components whose redistribution terms are verified, and report missing paths explicitly. |
+| Low | OpenCV compile/load path policy vs cross-platform claim | OpenCV can be installed at different versions and paths per machine, and live filter compilation needs compiler, header, library, and runtime loader paths. | Windows/macOS/Linux behavior can diverge, and missing OpenCV paths can fail at compile or `dlopen` time. | Keep OpenCV optional for the host build, auto-detect common compiler/OpenCV paths, allow user overrides, and report missing paths explicitly. |
 
 ## Repository Rule
 - Parent commits contain host code, docs, and submodule pointers.
@@ -43,8 +43,9 @@
 - [x] Allow Playground host builds without OpenCV.
 - [x] Add OpenCV runtime path resolution through settings, environment, app-local folders, and CMake defaults.
 - [x] Attach OpenCV runtime path UI to the filter script toolbar.
-- [ ] Generalize runtime path policy for pylon and GoPxL/Gocator SDKs.
-- [ ] Add explicit runtime diagnostics UI/logging for missing pylon, GoPxL, and OpenCV paths.
+- [x] Auto-detect C++ compiler and OpenCV include/library paths for live filter compilation.
+- [x] Show resolved OpenCV paths as defaults in the filter script runtime path dialog.
+- [ ] Add explicit runtime diagnostics UI/logging for missing OpenCV compile/load paths.
 - [ ] Define `process_image` ABI v1 documentation and compatibility rules.
 - [ ] Decide whether multi-node processing requires a new ABI or a graph-level wrapper around ABI v1.
 - [ ] Add manual validation notes for macOS/Linux/Windows OpenCV compile/load paths.
