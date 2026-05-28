@@ -551,6 +551,7 @@ private:
 
 QProcessingWidget::QProcessingWidget(QWidget* parent)
     : QWidget(parent) {
+    setMinimumSize(380, 480);
     QString scratchRoot = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
     if (scratchRoot.isEmpty()) {
         scratchRoot = QDir::tempPath();

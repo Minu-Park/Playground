@@ -13,6 +13,7 @@
 
 QStaticImageControlWidget::QStaticImageControlWidget(QWidget* parent)
     : QWidget(parent) {
+    setMinimumSize(280, 220);
     initUI();
 }
 

@@ -25,6 +25,10 @@
   - `messageState`: device statusbar message labels such as `normal`, `error`.
   - `state`: host status text such as runtime path warnings.
 - After changing a dynamic property, repolish the widget when immediate visual refresh is needed.
+- Enforce size limits and layout safety:
+  - Visual panel constructors must define explicit `setMinimumSize` parameters (e.g., `300x350` for `QCameraWidget`, `380x480` for `QProcessingWidget`) to prevent display compression.
+  - `DeviceSession` must dynamically compute minimum bounds in `minimumSizeHint()` depending on active dock visibility.
+  - `MdiSubWindowContainer` monitors layout changes via event filters to dynamically update resize limits, preventing hardcoded limits.
 
 ## QSS Layout
 | File | Scope |

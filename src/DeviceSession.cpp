@@ -160,6 +160,8 @@ void DeviceSession::setupViewMenu() {
 void DeviceSession::updateProcessingDockLayoutState() {
     if (!_processingDock) return;
 
+    updateGeometry(); // Trigger layout update for new minimum size calculation
+
     bool isDockedVisible = _processingDock->isVisible() && !_processingDock->isFloating();
     if (isDockedVisible == _processingDockWasDockedVisible) return; // No state change
 
@@ -171,6 +173,8 @@ void DeviceSession::updateProcessingDockLayoutState() {
 
         bool currentDockedVisible = _processingDock->isVisible() && !_processingDock->isFloating();
         if (currentDockedVisible != isDockedVisible) return;
+
+        updateGeometry();
 
         int dockWidth = _processingDock->widget() ? _processingDock->widget()->sizeHint().width() : 320;
         if (dockWidth <= 0) dockWidth = 320;
@@ -231,17 +235,50 @@ void DeviceSession::updateProcessingDockLayoutState() {
 
 void DeviceSession::resizeEvent(QResizeEvent* event) {
     QMainWindow::resizeEvent(event);
+}
 
-    // Cache the undocked width if the processing dock is not docked & visible
+QSize DeviceSession::minimumSizeHint() const {
+    int minW = 300;
+    int minH = 200;
+
+    if (_graphicsEngine) {
+        minW = qMax(minW, _graphicsEngine->minimumSize().width() > 0 ? _graphicsEngine->minimumSize().width() : _graphicsEngine->minimumSizeHint().width());
+        minH = qMax(minH, _graphicsEngine->minimumSize().height() > 0 ? _graphicsEngine->minimumSize().height() : _graphicsEngine->minimumSizeHint().height());
+    }
+
+    if (_controlDock && _controlDock->isVisible() && !_controlDock->isFloating()) {
+        QWidget* w = _controlDock->widget();
+        if (w) {
+            int wW = w->minimumSize().width() > 0 ? w->minimumSize().width() : w->minimumSizeHint().width();
+            int wH = w->minimumSize().height() > 0 ? w->minimumSize().height() : w->minimumSizeHint().height();
+            minW += wW;
+            minH = qMax(minH, wH);
+        }
+    }
+
+    if (_processingDock && _processingDock->isVisible() && !_processingDock->isFloating()) {
+        QWidget* w = _processingDock->widget();
+        if (w) {
+            int wW = w->minimumSize().width() > 0 ? w->minimumSize().width() : w->minimumSizeHint().width();
+            int wH = w->minimumSize().height() > 0 ? w->minimumSize().height() : w->minimumSizeHint().height();
+            minW += wW;
+            minH = qMax(minH, wH);
+        }
+    }
+
+    // Add standard margins for splitters/borders/menus
+    minW += 16;
+    minH += 38;
+
+    return QSize(minW, minH);
+}
+
+void DeviceSession::notifyManualResizeFinished() {
     bool isDockedVisible = _processingDock && _processingDock->isVisible() && !_processingDock->isFloating();
     if (!isDockedVisible) {
         bool isMax = _subWindow ? _subWindow->isMaximized() : isMaximized();
-        if (!isMax) {
-            if (_subWindow) {
-                _undockedMainWindowWidth = _subWindow->width();
-            } else {
-                _undockedMainWindowWidth = width();
-            }
+        if (!isMax && _subWindow && !_subWindow->isMinimized()) {
+            _undockedMainWindowWidth = _subWindow->width();
         }
     }
 }

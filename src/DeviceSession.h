@@ -27,6 +27,9 @@ public:
     explicit DeviceSession(const QStringList& filePaths, QWidget* parent = nullptr);
     ~DeviceSession() override;
 
+    QSize minimumSizeHint() const override;
+    void notifyManualResizeFinished();
+
     void setSubWindow(QMdiSubWindow* subWin) { _subWindow = subWin; }
 
 private:
