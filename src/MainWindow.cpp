@@ -684,7 +684,12 @@ void MainWindow::restoreSession(QMdiSubWindow* subWin) {
         w->deleteLater();
     }
 
-    subWin->showNormal();
+    bool wasMaximized = subWin->property("wasMaximizedBeforeMinimize").toBool();
+    if (wasMaximized) {
+        subWin->showMaximized();
+    } else {
+        subWin->showNormal();
+    }
     subWin->show();
     _mdiArea->setActiveSubWindow(subWin);
     updateMainStatusBar();
