@@ -30,6 +30,8 @@
   - Visual panel constructors must define explicit `setMinimumSize` parameters (e.g., `300x350` for `QCameraWidget`, `380x480` for `QProcessingWidget`) to prevent display compression.
   - `DeviceSession` must dynamically compute minimum bounds in `minimumSizeHint()` depending on active dock visibility.
   - `MdiSubWindowContainer` monitors layout changes via event filters to dynamically update resize limits, preventing hardcoded limits.
+    - To prevent blocking minimization (`showMinimized()`), `setMinimumSize` is reset to `QSize(0, 0)` during minimized/maximized states and only locked to the layout's dynamic `minimumSizeHint()` in the normal state.
+    - Subwindows remember their pre-minimize maximized state in a custom property `"wasMaximizedBeforeMinimize"` to restore back to their correct maximized or normal state reliably.
 
 ## QSS Layout
 | File | Scope |
