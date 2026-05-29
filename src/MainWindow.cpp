@@ -107,8 +107,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     _cameraSystem = std::make_unique<CameraSystem>();
 
     _mdiArea = new BrandedMdiArea(this);
-    _mdiArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    _mdiArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    _mdiArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    _mdiArea->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setCentralWidget(_mdiArea);
     createOpenGLCompositionSeed();
     installRecursiveEventFilter(_mdiArea, this);
