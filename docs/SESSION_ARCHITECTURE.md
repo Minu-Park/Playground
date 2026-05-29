@@ -77,8 +77,9 @@ DeviceSession
 - Camera sessions must preserve `Camera::ready()` as the live-frame admission contract.
 
 ## Subwindow State Policy
-- `QMdiSubWindow` owns maximize/minimize/restore geometry entirely via Qt's internal state machine.
-- `MdiSubWindowContainer::handleWindowStateChange` handles style property toggles and mask only — no forced geometry, no size constraints.
+- `QMdiSubWindow` owns maximize/restore geometry entirely via Qt's internal state machine.
+- `MdiSubWindowContainer::handleWindowStateChange` handles style property toggles, mask clear on maximize, and emits `minimizeRequested` on minimize.
+- Minimize hides the subwindow and places a restore/close indicator in the main statusbar; restore shows the subwindow via `showNormal()`.
 - `DeviceSession` owns its own `minimumSizeHint()` and `sizeHint()` based on GraphicsEngine + visible docks.
 - `DeviceSession::adjustSessionWidth()` only responds to explicit user dock toggle (via `toggleViewAction`) and float/unfloat — not to spurious `visibilityChanged` signals during maximize/restore transitions.
 - Subwindow initial size is set from `session->sizeHint()` at creation time in `MainWindow`.
