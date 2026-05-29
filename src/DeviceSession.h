@@ -27,6 +27,7 @@ public:
     explicit DeviceSession(const QStringList& filePaths, QWidget* parent = nullptr);
     ~DeviceSession() override;
 
+    QSize sizeHint() const override;
     QSize minimumSizeHint() const override;
     void notifyManualResizeFinished();
 

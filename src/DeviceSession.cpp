@@ -71,7 +71,9 @@ void DeviceSession::initCommon() {
     setCentralWidget(_graphicsEngine);
     _sink = new GraphicsEngineSink(_graphicsEngine, this);
     setTabPosition(Qt::AllDockWidgetAreas, QTabWidget::North);
-    _undockedMainWindowWidth = 450;
+    _undockedMainWindowWidth = qMax(400, _graphicsEngine->minimumSize().width() > 0
+        ? _graphicsEngine->minimumSize().width() + 16
+        : 400);
     _controlDockWasDockedVisible = true;
 }
 
@@ -124,7 +126,9 @@ void DeviceSession::setControlWidget(QWidget* widget, const QString& title) {
     addDockWidget(Qt::LeftDockWidgetArea, _controlDock);
     _controlDock->show();
 
-    connect(_controlDock, &QDockWidget::visibilityChanged, this, &DeviceSession::updateControlDockLayoutState);
+    setMinimumSize(minimumSizeHint());
+
+    connect(_controlDock->toggleViewAction(), &QAction::triggered, this, &DeviceSession::updateControlDockLayoutState);
     connect(_controlDock, &QDockWidget::topLevelChanged, this, &DeviceSession::updateControlDockLayoutState);
 }
 
@@ -140,7 +144,7 @@ void DeviceSession::createProcessingDock() {
 
     _processingDock->hide(); // Default HIDE
 
-    connect(_processingDock, &QDockWidget::visibilityChanged, this, &DeviceSession::updateProcessingDockLayoutState);
+    connect(_processingDock->toggleViewAction(), &QAction::triggered, this, &DeviceSession::updateProcessingDockLayoutState);
     connect(_processingDock, &QDockWidget::topLevelChanged, this, &DeviceSession::updateProcessingDockLayoutState);
 }
 
@@ -164,45 +168,33 @@ void DeviceSession::setupViewMenu() {
 
 void DeviceSession::updateControlDockLayoutState() {
     if (!_controlDock) return;
-
-    updateGeometry();
+    if (_subWindow && (_subWindow->isMaximized() || _subWindow->isMinimized())) return;
 
     bool isDockedVisible = _controlDock->isVisible() && !_controlDock->isFloating();
     if (isDockedVisible == _controlDockWasDockedVisible) return;
 
     _controlDockWasDockedVisible = isDockedVisible;
-
-    QTimer::singleShot(50, this, [this, isDockedVisible]() {
-        if (!_controlDock) return;
-        bool currentDockedVisible = _controlDock->isVisible() && !_controlDock->isFloating();
-        if (currentDockedVisible != isDockedVisible) return;
-
-        updateGeometry();
-        adjustSessionWidth();
-    });
+    updateGeometry();
+    adjustSessionWidth();
 }
 
 void DeviceSession::updateProcessingDockLayoutState() {
     if (!_processingDock) return;
-
-    updateGeometry();
+    if (_subWindow && (_subWindow->isMaximized() || _subWindow->isMinimized())) return;
 
     bool isDockedVisible = _processingDock->isVisible() && !_processingDock->isFloating();
     if (isDockedVisible == _processingDockWasDockedVisible) return;
 
     _processingDockWasDockedVisible = isDockedVisible;
-
-    QTimer::singleShot(50, this, [this, isDockedVisible]() {
-        if (!_processingDock) return;
-        bool currentDockedVisible = _processingDock->isVisible() && !_processingDock->isFloating();
-        if (currentDockedVisible != isDockedVisible) return;
-
-        updateGeometry();
-        adjustSessionWidth();
-    });
+    updateGeometry();
+    adjustSessionWidth();
 }
 
 void DeviceSession::adjustSessionWidth() {
+    if (_subWindow && (_subWindow->isMaximized() || _subWindow->isMinimized())) {
+        return;
+    }
+
     bool controlDockedVisible = _controlDock && _controlDock->isVisible() && !_controlDock->isFloating();
     bool processingDockedVisible = _processingDock && _processingDock->isVisible() && !_processingDock->isFloating();
 
@@ -220,8 +212,7 @@ void DeviceSession::adjustSessionWidth() {
     if (controlDockedVisible) targetW += controlWidth;
     if (processingDockedVisible) targetW += processingWidth;
 
-    bool isMax = _subWindow ? _subWindow->isMaximized() : isMaximized();
-    if (!isMax && _subWindow) {
+    if (_subWindow) {
         int targetH = _subWindow->height();
 
         if (processingDockedVisible && _processingDock->widget()) {
@@ -246,6 +237,11 @@ void DeviceSession::adjustSessionWidth() {
 
 void DeviceSession::resizeEvent(QResizeEvent* event) {
     QMainWindow::resizeEvent(event);
+}
+
+QSize DeviceSession::sizeHint() const {
+    QSize minSize = minimumSizeHint();
+    return QSize(qMax(minSize.width(), 700), qMax(minSize.height(), 480));
 }
 
 QSize DeviceSession::minimumSizeHint() const {

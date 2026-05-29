@@ -213,6 +213,7 @@ void MainWindow::onAddBaslerCamera() {
     }
 
     _mdiArea->addSubWindow(subWin);
+    subWin->resize(session->sizeHint() + QSize(2, 34));
     subWin->show();
     updateMainStatusBar();
 }
@@ -245,6 +246,7 @@ void MainWindow::onAddLmiGocator() {
     }
 
     _mdiArea->addSubWindow(subWin);
+    subWin->resize(session->sizeHint() + QSize(2, 34));
     subWin->show();
     updateMainStatusBar();
 }
@@ -276,6 +278,7 @@ void MainWindow::onAddTestImageSession() {
     }
 
     _mdiArea->addSubWindow(subWin);
+    subWin->resize(session->sizeHint() + QSize(2, 34));
     subWin->show();
     updateMainStatusBar();
 }
