@@ -34,10 +34,10 @@ public:
         , m_parentDialog(parentDialog)
     {
         setObjectName(QStringLiteral("RuntimePathsTitleBar"));
-        setFixedHeight(28);
+        setFixedHeight(30);
 
         auto* layout = new QHBoxLayout(this);
-        layout->setContentsMargins(12, 0, 8, 0);
+        layout->setContentsMargins(12, 0, 12, 0);
         layout->setSpacing(6);
 
         auto* titleLabel = new QLabel(title, this);
@@ -51,17 +51,17 @@ public:
         auto* closeButton = new QPushButton(this);
         closeButton->setObjectName(QStringLiteral("RuntimePathsCloseButton"));
         closeButton->setFocusPolicy(Qt::NoFocus);
-        closeButton->setFixedSize(18, 18);
+        closeButton->setFixedSize(20, 20);
         closeButton->setStyleSheet(QStringLiteral(
             "QPushButton#RuntimePathsCloseButton { border: none; background: transparent; padding: 0; margin: 0; }"
-            "QPushButton#RuntimePathsCloseButton:hover { background-color: #f5f5f5; border-radius: 4px; }"
+            "QPushButton#RuntimePathsCloseButton:hover { background: transparent; }"
         ));
 
         QIcon closeIcon(QStringLiteral(":/Resources/Icons/icons8-close-window-48.png"));
         if (!closeIcon.isNull())
         {
             closeButton->setIcon(closeIcon);
-            closeButton->setIconSize(QSize(12, 12));
+            closeButton->setIconSize(QSize(16, 16));
         }
         else
         {

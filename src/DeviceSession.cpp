@@ -121,8 +121,9 @@ void DeviceSession::setControlWidget(QWidget* widget, const QString& title) {
     _controlDock = new QDockWidget(title, this);
     _controlDock->setObjectName(QStringLiteral("SessionControlDock"));
     _controlDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
-    _controlDock->setTitleBarWidget(new DockTitleBar(_controlDock, _controlDock));
-    _controlDock->setWidget(widget);
+
+    DockTitleBar::setupDockWidget(_controlDock, widget);
+
     addDockWidget(Qt::LeftDockWidgetArea, _controlDock);
     _controlDock->show();
 
@@ -138,8 +139,9 @@ void DeviceSession::createProcessingDock() {
 
     _processingDock = new QDockWidget(QStringLiteral("Image Processing Pipeline"), this);
     _processingDock->setObjectName(QStringLiteral("ProcessingPipelineDock"));
-    _processingDock->setTitleBarWidget(new DockTitleBar(_processingDock, _processingDock));
-    _processingDock->setWidget(_processingWidget);
+
+    DockTitleBar::setupDockWidget(_processingDock, _processingWidget);
+
     addDockWidget(Qt::RightDockWidgetArea, _processingDock);
 
     _processingDock->hide(); // Default HIDE

@@ -407,14 +407,14 @@ void MainWindow::createLogDock() {
     _logDock = new QDockWidget(tr("System Logs"), this);
     _logDock->setObjectName(QStringLiteral("SystemLogsDock"));
     _logDock->setAllowedAreas(Qt::BottomDockWidgetArea | Qt::TopDockWidgetArea);
-    _logDock->setTitleBarWidget(new DockTitleBar(_logDock, this));
 
     _logViewer = new QTextEdit(this);
     _logViewer->setObjectName(QStringLiteral("SystemLogViewer"));
     _logViewer->setReadOnly(true);
     _logViewer->document()->setMaximumBlockCount(500); // UI also rolls up to 500 lines
 
-    _logDock->setWidget(_logViewer);
+    DockTitleBar::setupDockWidget(_logDock, _logViewer);
+
     addDockWidget(Qt::BottomDockWidgetArea, _logDock);
     installRecursiveEventFilter(_logDock, this);
 }
@@ -527,10 +527,11 @@ int MainWindow::determineResizeMode(const QPoint& pos)
 
     int mode = ResizeNone;
     const int border = 6;
+    const int topBorder = 3;
 
     if (pos.x() < border) mode |= ResizeLeft;
     if (pos.x() > width() - border) mode |= ResizeRight;
-    if (pos.y() < border) mode |= ResizeTop;
+    if (pos.y() < topBorder) mode |= ResizeTop;
     if (pos.y() > height() - border) mode |= ResizeBottom;
 
     return mode;
