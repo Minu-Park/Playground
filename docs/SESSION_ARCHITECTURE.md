@@ -76,6 +76,13 @@ DeviceSession
 - Deleting a Gocator session closes and deletes the Gocator after controller teardown.
 - Camera sessions must preserve `Camera::ready()` as the live-frame admission contract.
 
+## Subwindow State Policy
+- `QMdiSubWindow` owns maximize/minimize/restore geometry entirely via Qt's internal state machine.
+- `MdiSubWindowContainer::handleWindowStateChange` handles style property toggles and mask only — no forced geometry, no size constraints.
+- `DeviceSession` owns its own `minimumSizeHint()` and `sizeHint()` based on GraphicsEngine + visible docks.
+- `DeviceSession::adjustSessionWidth()` only responds to explicit user dock toggle (via `toggleViewAction`) and float/unfloat — not to spurious `visibilityChanged` signals during maximize/restore transitions.
+- Subwindow initial size is set from `session->sizeHint()` at creation time in `MainWindow`.
+
 ## Routing Policy
 - Controllers convert device payloads into `ProcessingFrame`.
 - Camera 3D routing keeps Blaze compatibility and converts Stereo mini/Stereo ace mono/color inputs through the Camera module's pylon Scene3D adapter.
