@@ -9,12 +9,15 @@ class RuntimePathsDialog : public QDialog {
 public:
     explicit RuntimePathsDialog(QWidget* parent = nullptr);
 
+protected:
+    void paintEvent(QPaintEvent* event) override;
+
 private:
     void loadSettings();
     void saveSettings();
     void clearSettings();
     void updateStatus();
-    QLineEdit* addPathRow(const QString& label, bool directory);
+    QLineEdit* addPathRow(const QString& label, bool directory, QWidget* parentWidget);
 
     QLineEdit* _compilerEdit = nullptr;
     QLineEdit* _includeEdit = nullptr;
