@@ -259,6 +259,7 @@ QSize DeviceSession::minimumSizeHint() const {
         QWidget* w = _controlDock->widget();
         if (w) {
             int wW = w->minimumSize().width() > 0 ? w->minimumSize().width() : w->minimumSizeHint().width();
+            wW = qMax(300, wW); // Enforce a 300px min width for Control dock contents
             int wH = w->minimumSize().height() > 0 ? w->minimumSize().height() : w->minimumSizeHint().height();
             minW += wW;
             minH = qMax(minH, wH);
@@ -269,6 +270,7 @@ QSize DeviceSession::minimumSizeHint() const {
         QWidget* w = _processingDock->widget();
         if (w) {
             int wW = w->minimumSize().width() > 0 ? w->minimumSize().width() : w->minimumSizeHint().width();
+            wW = qMax(320, wW); // Enforce a 320px min width for Processing dock contents
             int wH = w->minimumSize().height() > 0 ? w->minimumSize().height() : w->minimumSizeHint().height();
             minW += wW;
             minH = qMax(minH, wH);
