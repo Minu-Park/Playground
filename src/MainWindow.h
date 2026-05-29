@@ -1,5 +1,6 @@
 #pragma once
 #include <QMainWindow>
+#include <QVector>
 #include <memory>
 
 class QMdiArea;
@@ -7,6 +8,7 @@ class CameraSystem;
 class QTextEdit;
 class QDockWidget;
 class QEvent;
+class QLabel;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -32,6 +34,9 @@ private:
     void createMenus();
     void createLogDock();
     void createOpenGLCompositionSeed();
+    void createMainStatusBar();
+    void updateMainStatusBar();
+    void refreshPluginIndicators();
 
     enum ResizeDirection {
         ResizeNone = 0,
@@ -47,6 +52,9 @@ private:
     QMdiArea* _mdiArea;
     QTextEdit* _logViewer = nullptr;
     QDockWidget* _logDock = nullptr;
+    QLabel* _sessionCountStatus = nullptr;
+    QLabel* _activeSessionStatus = nullptr;
+    QVector<QLabel*> _pluginIndicators;
     std::unique_ptr<CameraSystem> _cameraSystem;
 
     QPoint _dragStartPos;

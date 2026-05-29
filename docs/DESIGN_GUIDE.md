@@ -19,6 +19,7 @@
 - Modules must compile and operate without calling Resources APIs.
 - Do not add local `setStyleSheet()` outside `modules/Resources/Resources.cpp`.
 - Do not add shared UI hex colors, border radius, padding, margin, or font-weight values outside Resources QSS.
+- Before changing QSS, inspect the C++ code that creates the styled widgets. Confirm the `objectName`, dynamic properties, parent chain, layout margins, size policies, event filters, and any runtime style hooks that can override or bypass stylesheet behavior.
 - Use stable `objectName` selectors for styleable widgets.
 - Use dynamic properties for state:
   - `status`: device status labels such as `Idle`, `Disconnected`, `Connected`, `Live`.
@@ -36,12 +37,23 @@
 | `00_base.qss` | Common Qt widget defaults and low-level shared selectors. |
 | `10_graphics_engine.qss` | GraphicsEngine toolbar/statusbar/image/plot helper selectors. |
 | `20_statusbar.qss` | Shared statusbar and bubble sizing rules. |
-| `30_camera_gocator.qss` | Camera/Gocator control widgets, feature trees, device status/message labels. |
+| `30_camera_gocator.qss` | Camera/Gocator control widgets, feature-tree header shell, device status/message labels. |
 | `40_chrome.qss` | Top-level titlebar, session titlebar, dock titlebar, MDI frame controls. |
 | `50_static_image.qss` | Test Image controls and neutral file selection. |
 | `60_processing.qss` | Processing dock, editor shell, runtime-path dialog, compile controls. |
 
 Keep selector order stable. Move common selectors earlier and object-specific selectors later.
+
+Compact bubble geometry is centralized in `20_statusbar.qss` for statusbar labels/buttons and matching compact toggle buttons. Later module-specific QSS files may override state color, font weight, icon size, or compact padding, but must not redefine the shared bubble border, radius, height, or margin. `Resources.cpp` installs modest statusbar contents insets because Qt does not reliably apply QSS padding to `QStatusBar` child item positions; do not set the internal statusbar layout margins because that over-shifts the first bubble.
+
+MainWindow statusbar labels use the same compact bubble geometry and must show global app state only, not per-device or per-frame status.
+
+## Bubble Header Pattern
+- Bubble headers are the preferred shell for compact tree/table controls that need a distinct header without a heavy table frame.
+- Keep the bubble on `QHeaderView`, not the full `QTreeWidget` or `QTableWidget`, so body rows keep their normal density.
+- Use a thin border, modest radius, compact section height, and a single vertical divider between sections.
+- Scale radius by visual height; compact 24px status bubbles use a smaller radius than taller header shells so they do not read as mismatched pills.
+- Future custom controls should expose stable object names or semantic properties, then add their bubble header selectors in Resources QSS.
 
 ## Required Pattern
 ```cpp
@@ -84,6 +96,7 @@ QLabel#CameraMessageLabel[messageState="error"] {
 ## Review Checklist
 - `rg -n "setStyleSheet\\(" src modules/Camera modules/Gocator modules/GraphicsEngine modules/Resources --glob '!modules/Resources/theme/qss/*.qss' --glob '!modules/Resources/Style.qss'`
 - `rg -n "QColor\\(|#[0-9A-Fa-f]{6}|font-weight|border-radius|padding:|margin:" src modules/Camera modules/Gocator modules/GraphicsEngine --glob '!modules/Gocator/GoPxL-SDK/**'`
+- Trace changed QSS selectors back to the C++ constructors or setup methods that set `objectName`, properties, margins, size policies, and event filters.
 - Confirm modules do not call `Resources::installResources`.
 - Run `git diff --check` in parent and touched modules.
 - Build the smallest affected target, then `Playground` for integration changes.

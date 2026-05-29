@@ -17,6 +17,9 @@
 #include <QStatusBar>
 #include <QTextEdit>
 #include <QScrollBar>
+#include <QLabel>
+#include <QSettings>
+#include <QTimer>
 #include <QPainter>
 #include <QPixmap>
 #include <QOpenGLFunctions>
@@ -108,8 +111,14 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     createOpenGLCompositionSeed();
     installRecursiveEventFilter(_mdiArea, this);
 
-    statusBar()->setSizeGripEnabled(false);
-    installRecursiveEventFilter(statusBar(), this);
+    auto* mainStatusBar = statusBar();
+    mainStatusBar->setObjectName(QStringLiteral("MainStatusBar"));
+    mainStatusBar->setSizeGripEnabled(false);
+    installRecursiveEventFilter(mainStatusBar, this);
+    createMainStatusBar();
+    connect(_mdiArea, &QMdiArea::subWindowActivated, this, [this]() {
+        updateMainStatusBar();
+    });
 
     createLogDock();
     createMenus();
@@ -188,6 +197,10 @@ void MainWindow::onAddBaslerCamera() {
     subWin->setWindowFlags(Qt::SubWindow | Qt::FramelessWindowHint);
     subWin->setContentsMargins(0, 0, 0, 0);
     subWin->setWindowTitle(session->windowTitle());
+    subWin->setProperty("sessionType", QStringLiteral("Camera"));
+    connect(subWin, &QObject::destroyed, this, [this]() {
+        QTimer::singleShot(0, this, [this]() { updateMainStatusBar(); });
+    });
 
     session->setSubWindow(subWin);
 
@@ -201,6 +214,7 @@ void MainWindow::onAddBaslerCamera() {
 
     _mdiArea->addSubWindow(subWin);
     subWin->show();
+    updateMainStatusBar();
 }
 
 void MainWindow::onAddLmiGocator() {
@@ -215,6 +229,10 @@ void MainWindow::onAddLmiGocator() {
     subWin->setWindowFlags(Qt::SubWindow | Qt::FramelessWindowHint);
     subWin->setContentsMargins(0, 0, 0, 0);
     subWin->setWindowTitle(session->windowTitle());
+    subWin->setProperty("sessionType", QStringLiteral("Gocator"));
+    connect(subWin, &QObject::destroyed, this, [this]() {
+        QTimer::singleShot(0, this, [this]() { updateMainStatusBar(); });
+    });
 
     session->setSubWindow(subWin);
 
@@ -228,6 +246,7 @@ void MainWindow::onAddLmiGocator() {
 
     _mdiArea->addSubWindow(subWin);
     subWin->show();
+    updateMainStatusBar();
 }
 
 void MainWindow::onAddTestImageSession() {
@@ -241,6 +260,10 @@ void MainWindow::onAddTestImageSession() {
     subWin->setWindowFlags(Qt::SubWindow | Qt::FramelessWindowHint);
     subWin->setContentsMargins(0, 0, 0, 0);
     subWin->setWindowTitle(session->windowTitle());
+    subWin->setProperty("sessionType", QStringLiteral("Images"));
+    connect(subWin, &QObject::destroyed, this, [this]() {
+        QTimer::singleShot(0, this, [this]() { updateMainStatusBar(); });
+    });
 
     session->setSubWindow(subWin);
 
@@ -254,6 +277,74 @@ void MainWindow::onAddTestImageSession() {
 
     _mdiArea->addSubWindow(subWin);
     subWin->show();
+    updateMainStatusBar();
+}
+
+void MainWindow::createMainStatusBar() {
+    _sessionCountStatus = new QLabel(this);
+    _sessionCountStatus->setObjectName(QStringLiteral("MainSessionCountStatus"));
+
+    _activeSessionStatus = new QLabel(this);
+    _activeSessionStatus->setObjectName(QStringLiteral("MainActiveSessionStatus"));
+
+    statusBar()->addWidget(_sessionCountStatus);
+    statusBar()->addWidget(_activeSessionStatus);
+    refreshPluginIndicators();
+    updateMainStatusBar();
+}
+
+void MainWindow::updateMainStatusBar() {
+    const int sessionCount = _mdiArea ? _mdiArea->subWindowList().size() : 0;
+    if (_sessionCountStatus) {
+        _sessionCountStatus->setText(sessionCount == 1 ? tr("1 Session") : tr("%1 Sessions").arg(sessionCount));
+    }
+
+    QString activeText = tr("None");
+    if (_mdiArea) {
+        if (auto* active = _mdiArea->activeSubWindow()) {
+            const QString sessionType = active->property("sessionType").toString();
+            activeText = sessionType.isEmpty() ? tr("Session") : sessionType;
+        }
+    }
+    if (_activeSessionStatus) {
+        _activeSessionStatus->setText(activeText);
+    }
+}
+
+void MainWindow::refreshPluginIndicators() {
+    for (QLabel* label : _pluginIndicators) {
+        statusBar()->removeWidget(label);
+        delete label;
+    }
+    _pluginIndicators.clear();
+
+    struct PluginProbe {
+        QString name;
+        QString objectName;
+        bool available;
+    };
+
+    QSettings settings;
+    const bool opencvAvailable =
+#ifdef OPENCV_INCLUDE_DIR
+        true
+#else
+        settings.contains(QStringLiteral("RuntimePaths/OpenCV/IncludeDir"))
+        || settings.contains(QStringLiteral("RuntimePaths/OpenCV/LibraryDir"))
+#endif
+        ;
+
+    QVector<PluginProbe> probes = {
+        { QStringLiteral("OpenCV"), QStringLiteral("PluginIndicator_OpenCV"), opencvAvailable },
+    };
+
+    for (const auto& probe : probes) {
+        if (!probe.available) continue;
+        auto* label = new QLabel(probe.name, this);
+        label->setObjectName(probe.objectName);
+        statusBar()->addPermanentWidget(label);
+        _pluginIndicators.append(label);
+    }
 }
 
 void MainWindow::onTileWindows() {

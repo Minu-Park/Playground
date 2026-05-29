@@ -5,7 +5,9 @@
 - `modules/*` are git submodules with independent git histories.
 - Parent repo owns only orchestration source and docs.
 - Korean chat, English docs. Do not translate unless asked.
-- Concise, word-first replies.
+- Replies must be short by default: one direct answer, then only essential bullets.
+- Final replies should stay under 5 short bullets or 5 short sentences unless the user asks for detail.
+- No recap, praise, or long explanation unless needed for cause -> effect.
 - Cause -> effect.
 - Ask before unclear boundary or performance-risk changes.
 - Cross-platform compatibility: design code and assets for Windows, Linux, and macOS.
@@ -57,7 +59,7 @@ Use this routing before opening or creating docs:
 | Basler Stereo 3D hardware contract | `docs/STEREO_3D_CAMERA_INTEGRATION.md` | Stereo mini/ace payload, calibration, hardware validation, or 3D profile behavior changes. |
 
 Task routing:
-- UI change: read `DESIGN_GUIDE.md` and the relevant architecture doc only.
+- UI change: read `DESIGN_GUIDE.md`, then inspect the relevant widget C++ that owns object names, dynamic properties, layout, and runtime style hooks.
 - Architecture change: read `STRUCTURE.md`, then `SESSION_ARCHITECTURE.md` if session/UI lifecycle is touched.
 - Device/runtime change: read `STRUCTURE.md`, then the touched module docs; read `STEREO_3D_CAMERA_INTEGRATION.md` only for Stereo 3D work.
 - Build/git/upload change: read `DEVELOPMENT_GUIDE.md`; do not scan UI docs unless the change touches UI.

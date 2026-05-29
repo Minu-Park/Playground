@@ -21,7 +21,7 @@
 
 | Class | Responsibility | Must Not Own |
 | --- | --- | --- |
-| `MainWindow` | App shell, Resources-provided frameless top-level chrome, MDI workspace, menus, global logs, `CameraSystem`, startup OpenGL composition seed, session creation/removal ordering | Frame routing, processing policy, per-device UI internals |
+| `MainWindow` | App shell, Resources-provided frameless top-level chrome, MDI workspace, menus, global logs, global statusbar summaries, `CameraSystem`, startup OpenGL composition seed, session creation/removal ordering | Frame routing, processing policy, per-device UI internals |
 | `modules/Resources/Chrome` widgets | `MainTitleBar`, `CustomTitleBar`, `MdiSubWindowContainer`, and `DockTitleBar` reusable chrome presentation/input widgets | Device/session lifecycle, acquisition state, frame routing |
 | `DockTitleBar` | Styled dock title and dock close/float controls provided by Resources | Dock content behavior, acquisition state |
 | `DeviceSession` | One session authority, device lifetime binding, controller lifetime, processing dock, control dock, display sink binding, wrapper-size coordination | Module internals, generic rendering implementation, chrome hit testing |
@@ -37,6 +37,7 @@
 | `DynamicProcessingCompiler` | Generated source, compile arguments, output artifact paths, OpenCV build environment | UI layout, frame processing state |
 
 ## Status Contract
+- Main statusbar shows global app state only: session count, active session type, and OpenCV runtime path mode.
 - Camera and Gocator control widgets expose status through widget-specific labels and the shared dynamic property `status`.
 - `Resources::installResources(app)` owns the shared style map for `Idle`, `Disconnected`, `Connected`, and `Live`.
 - Camera and Gocator message labels expose `messageState`; Resources owns normal/error message appearance when installed by the host.
