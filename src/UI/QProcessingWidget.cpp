@@ -243,6 +243,7 @@ public:
         _combinedWords = _defaultWords;
         _completer = new QCompleter(_combinedWords, this);
         _completer->setWidget(this);
+        _completer->popup()->setObjectName(QStringLiteral("AutoCompletePopup"));
         _completer->setCompletionMode(QCompleter::PopupCompletion);
         _completer->setCaseSensitivity(Qt::CaseInsensitive);
 
