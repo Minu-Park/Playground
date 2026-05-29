@@ -29,7 +29,7 @@ public:
 
     QSize sizeHint() const override;
     QSize minimumSizeHint() const override;
-    void notifyManualResizeFinished();
+    Q_INVOKABLE void notifyManualResizeFinished();
 
     void setSubWindow(QMdiSubWindow* subWin) { _subWindow = subWin; }
 
