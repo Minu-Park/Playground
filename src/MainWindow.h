@@ -1,9 +1,11 @@
 #pragma once
 #include <QMainWindow>
 #include <QVector>
+#include <QMap>
 #include <memory>
 
 class QMdiArea;
+class QMdiSubWindow;
 class CameraSystem;
 class QTextEdit;
 class QDockWidget;
@@ -37,6 +39,9 @@ private:
     void createMainStatusBar();
     void updateMainStatusBar();
     void refreshPluginIndicators();
+    void minimizeSession(QMdiSubWindow* subWin);
+    void restoreSession(QMdiSubWindow* subWin);
+    void closeMinimizedSession(QMdiSubWindow* subWin);
 
     enum ResizeDirection {
         ResizeNone = 0,
@@ -55,6 +60,7 @@ private:
     QLabel* _sessionCountStatus = nullptr;
     QLabel* _activeSessionStatus = nullptr;
     QVector<QLabel*> _pluginIndicators;
+    QMap<QMdiSubWindow*, QWidget*> _minimizedIndicators;
     std::unique_ptr<CameraSystem> _cameraSystem;
 
     QPoint _dragStartPos;

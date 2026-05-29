@@ -18,6 +18,8 @@
 #include <QTextEdit>
 #include <QScrollBar>
 #include <QLabel>
+#include <QPushButton>
+#include <QHBoxLayout>
 #include <QSettings>
 #include <QTimer>
 #include <QPainter>
@@ -206,6 +208,7 @@ void MainWindow::onAddBaslerCamera() {
 
     auto* container = new MdiSubWindowContainer(subWin, session, session->menuBar(), subWin);
     subWin->setWidget(container);
+    connect(container, &MdiSubWindowContainer::minimizeRequested, this, &MainWindow::minimizeSession);
 
     if (subWin->layout()) {
         subWin->layout()->setContentsMargins(0, 0, 0, 0);
@@ -239,6 +242,7 @@ void MainWindow::onAddLmiGocator() {
 
     auto* container = new MdiSubWindowContainer(subWin, session, session->menuBar(), subWin);
     subWin->setWidget(container);
+    connect(container, &MdiSubWindowContainer::minimizeRequested, this, &MainWindow::minimizeSession);
 
     if (subWin->layout()) {
         subWin->layout()->setContentsMargins(0, 0, 0, 0);
@@ -271,6 +275,7 @@ void MainWindow::onAddTestImageSession() {
 
     auto* container = new MdiSubWindowContainer(subWin, session, session->menuBar(), subWin);
     subWin->setWidget(container);
+    connect(container, &MdiSubWindowContainer::minimizeRequested, this, &MainWindow::minimizeSession);
 
     if (subWin->layout()) {
         subWin->layout()->setContentsMargins(0, 0, 0, 0);
@@ -608,5 +613,91 @@ bool MainWindow::eventFilter(QObject* watched, QEvent* event)
             return true;
         }
     }
+    if (watchedWidget->objectName() == QStringLiteral("MinimizedSessionClose")) {
+        if (event->type() == QEvent::Enter) {
+            auto* btn = qobject_cast<QPushButton*>(watchedWidget);
+            if (btn) btn->setIcon(QIcon(QStringLiteral(":/Resources/Icons/icons8-close-window-48-hover.png")));
+        } else if (event->type() == QEvent::Leave) {
+            auto* btn = qobject_cast<QPushButton*>(watchedWidget);
+            if (btn) btn->setIcon(QIcon(QStringLiteral(":/Resources/Icons/icons8-close-window-48.png")));
+        }
+    }
+
     return QMainWindow::eventFilter(watched, event);
+}
+
+void MainWindow::minimizeSession(QMdiSubWindow* subWin) {
+    if (!subWin || _minimizedIndicators.contains(subWin)) return;
+
+    subWin->hide();
+
+    auto* indicator = new QWidget(this);
+    indicator->setObjectName(QStringLiteral("MinimizedSessionIndicator"));
+
+    auto* layout = new QHBoxLayout(indicator);
+    layout->setContentsMargins(4, 0, 4, 0);
+    layout->setSpacing(0);
+    layout->setAlignment(Qt::AlignVCenter);
+
+    auto* restoreBtn = new QPushButton(subWin->windowTitle(), indicator);
+    restoreBtn->setObjectName(QStringLiteral("MinimizedSessionRestore"));
+    restoreBtn->setFocusPolicy(Qt::NoFocus);
+    restoreBtn->setCursor(Qt::PointingHandCursor);
+    layout->addWidget(restoreBtn);
+
+    auto* closeBtn = new QPushButton(indicator);
+    closeBtn->setObjectName(QStringLiteral("MinimizedSessionClose"));
+    closeBtn->setFocusPolicy(Qt::NoFocus);
+    closeBtn->setCursor(Qt::PointingHandCursor);
+    closeBtn->setIcon(QIcon(QStringLiteral(":/Resources/Icons/icons8-close-window-48.png")));
+    closeBtn->setIconSize(QSize(16, 16));
+    closeBtn->installEventFilter(this);
+    layout->addWidget(closeBtn);
+
+    connect(restoreBtn, &QPushButton::clicked, this, [this, subWin]() {
+        restoreSession(subWin);
+    });
+    connect(closeBtn, &QPushButton::clicked, this, [this, subWin]() {
+        closeMinimizedSession(subWin);
+    });
+    connect(subWin, &QObject::destroyed, this, [this, subWin]() {
+        if (_minimizedIndicators.contains(subWin)) {
+            auto* w = _minimizedIndicators.take(subWin);
+            statusBar()->removeWidget(w);
+            w->deleteLater();
+            updateMainStatusBar();
+        }
+    });
+
+    statusBar()->addWidget(indicator);
+    _minimizedIndicators.insert(subWin, indicator);
+    updateMainStatusBar();
+}
+
+void MainWindow::restoreSession(QMdiSubWindow* subWin) {
+    if (!subWin) return;
+
+    if (_minimizedIndicators.contains(subWin)) {
+        auto* w = _minimizedIndicators.take(subWin);
+        statusBar()->removeWidget(w);
+        w->deleteLater();
+    }
+
+    subWin->showNormal();
+    subWin->show();
+    _mdiArea->setActiveSubWindow(subWin);
+    updateMainStatusBar();
+}
+
+void MainWindow::closeMinimizedSession(QMdiSubWindow* subWin) {
+    if (!subWin) return;
+
+    if (_minimizedIndicators.contains(subWin)) {
+        auto* w = _minimizedIndicators.take(subWin);
+        statusBar()->removeWidget(w);
+        w->deleteLater();
+    }
+
+    subWin->close();
+    updateMainStatusBar();
 }
